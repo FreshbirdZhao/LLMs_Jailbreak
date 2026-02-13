@@ -1,0 +1,23 @@
+# 定义所有可用的模型及其连接方式
+local:
+  - name: qwen2:latest
+    type: ollama
+    base_url: http://localhost:11434
+    model: qwen2:latest
+
+  - name: deepseek-r1:1.5b
+    type: ollama
+    base_url: http://localhost:11434
+    model: deepseek-r1:1.5b
+
+  - name: mistral:7b
+    type: ollama
+    base_url: http://localhost:11434
+    model: mistral:7b
+
+commercial:
+  # 商业模型默认不启用，需要通过 api_keys.yaml 提供密钥
+  - name: gpt-4o-mini
+    type: openai_compatible
+    base_url: https://api.openai.com/v1 # 或者你的代理地址
+    model: gpt-4o-mini
