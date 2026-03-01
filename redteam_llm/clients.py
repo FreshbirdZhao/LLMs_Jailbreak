@@ -26,14 +26,21 @@ class ClientConfig:
     temperature: float = 0.8
     max_tokens: int = 2000
     timeout_s: float = 60.0
+    # Ollama convenience:
+    # - If True, we will attempt to pull a model that is missing locally.
+    auto_pull: bool = True
 
 
 class BaseClient:
+
     def __init__(self, cfg: ClientConfig, client: Optional[httpx.AsyncClient] = None):
         self.cfg = cfg
         self._client = client or httpx.AsyncClient(timeout=self.cfg.timeout_s)
 
     async def generate(self, prompt: str) -> str:
+        # Best-effort: verify server and pull missing models.
+        self._ensure_server()
+        self._ensure_model_available()
         raise NotImplementedError
 
     async def aclose(self):
@@ -45,6 +52,53 @@ class OllamaClient(BaseClient):
     Ollama HTTP API adapter:
       POST {base_url}/api/generate
     """
+def _ensure_server(self) -> None:
+    # Best-effort ping; raise a helpful message if Ollama isn't reachable.
+    url = f"{self.cfg.base_url.rstrip('/')}/api/tags"
+    try:
+        # Use a short timeout for health check
+        r = httpx.get(url, timeout=5.0)
+        r.raise_for_status()
+    except Exception as e:
+        raise RuntimeError(
+            f"Ollama server not reachable at {self.cfg.base_url}. "
+            "Start it with `ollama serve` (or ensure the service is running)."
+        ) from e
+
+def _ensure_model_available(self) -> None:
+    # If the model isn't present locally, optionally auto-pull it.
+    # This avoids having to run `ollama pull` manually.
+    if not self.cfg.auto_pull:
+        return
+    try:
+        import subprocess
+        import shlex
+
+        # Query local models via CLI (fast + reliable)
+        proc = subprocess.run(
+            ["ollama", "list"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if proc.returncode != 0:
+            # If CLI isn't available, we can't auto-pull; just return.
+            return
+        names = []
+        for line in proc.stdout.splitlines()[1:]:
+            line = line.strip()
+            if not line:
+                continue
+            names.append(line.split()[0])
+
+        if self.cfg.model_name not in names:
+            subprocess.run(
+                ["ollama", "pull", self.cfg.model_name],
+                check=True,
+            )
+    except Exception:
+        # Best-effort only; do not fail generation if pulling fails.
+        return
     async def generate(self, prompt: str) -> str:
         url = f"{self.cfg.base_url.rstrip('/')}/api/generate"
         payload: Dict[str, Any] = {
