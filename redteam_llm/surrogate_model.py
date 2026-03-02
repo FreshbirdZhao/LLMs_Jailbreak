@@ -9,13 +9,14 @@ from __future__ import annotations
 import os
 import sys
 import re
+import csv
 import json
 import random
 import asyncio
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Callable
 
 import yaml
 
@@ -39,6 +40,35 @@ _EN_STOPWORDS = {
 }
 
 
+def load_batch_prompts(input_path: str) -> List[str]:
+    loader = Loader()
+    suffix = Path(input_path).suffix.lower()
+
+    if suffix != ".csv":
+        cases = loader.load(input_path)
+        prompts: List[str] = []
+        for case in cases:
+            prompt = str(case.get("prompt", "")).strip()
+            if prompt:
+                prompts.append(prompt)
+        return prompts
+
+    prompts: List[str] = []
+    with open(input_path, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for idx, row in enumerate(reader, start=1):
+            try:
+                normalized = loader._normalize_case(row, fallback_id=str(idx))
+            except ValueError as e:
+                if "缺少 prompt 内容" in str(e):
+                    continue
+                raise
+            prompt = str(normalized.get("prompt", "")).strip()
+            if prompt:
+                prompts.append(prompt)
+    return prompts
+
+
 def build_default_single_output_path(
     output_dir: str = "/home/jellyz/Experiment/surrogate_results",
 ) -> Path:
@@ -49,7 +79,7 @@ def build_default_single_output_path(
     counter = _TIMESTAMP_COUNTERS.get(timestamp, 0)
     while True:
         suffix = "" if counter == 0 else f"_{counter:02d}"
-        candidate = base_dir / f"surrogate_results_{timestamp}{suffix}.json"
+        candidate = base_dir / f"surrogate_results_{timestamp}{suffix}.jsonl"
         if not candidate.exists():
             _TIMESTAMP_COUNTERS[timestamp] = counter + 1
             return candidate
@@ -146,6 +176,7 @@ class SurrogateConfig:
     anchor_threshold: float = 0.50
     max_retries: int = 2
     failure_text: str = "生成失败"
+    batch_unique_references: bool = False
 
 
 class SurrogateModel:
@@ -204,23 +235,45 @@ class SurrogateModel:
             return str(item.get("prompt", "")).strip()
         return ""
 
-    def _find_similar_prompts(self, original_prompt: str, top_k: Optional[int] = None) -> List[Dict[str, Any]]:
+    @staticmethod
+    def _reference_key(item: Any) -> str:
+        if isinstance(item, dict):
+            rid = str(item.get("id", "")).strip()
+            if rid:
+                return rid
+            return str(item.get("prompt", "")).strip()
+        return str(item).strip()
+
+    def _find_similar_prompts(
+        self,
+        original_prompt: str,
+        top_k: Optional[int] = None,
+        exclude_reference_keys: Optional[set[str]] = None,
+    ) -> List[Dict[str, Any]]:
         top_k = top_k or self.config.top_k
         original_patterns = self._extract_attack_patterns(original_prompt)
-        scored: List[Dict[str, Any]] = []
+        excluded = exclude_reference_keys or set()
 
-        for item in self.dataset:
-            prompt = self._get_prompt_text(item)
-            if not prompt:
-                continue
-            item_patterns = self._extract_attack_patterns(prompt)
-            pattern_overlap = len(set(original_patterns) & set(item_patterns)) / max(len(original_patterns), 1)
-            lexical = _token_overlap_score(original_prompt, prompt)
-            similarity = 0.4 * pattern_overlap + 0.6 * lexical
-            scored.append({"item": item, "similarity": similarity})
+        def _select(excluded_keys: set[str]) -> List[Dict[str, Any]]:
+            scored: List[Dict[str, Any]] = []
+            for item in self.dataset:
+                key = self._reference_key(item)
+                if key and key in excluded_keys:
+                    continue
+                prompt = self._get_prompt_text(item)
+                if not prompt:
+                    continue
+                item_patterns = self._extract_attack_patterns(prompt)
+                pattern_overlap = len(set(original_patterns) & set(item_patterns)) / max(len(original_patterns), 1)
+                lexical = _token_overlap_score(original_prompt, prompt)
+                similarity = 0.4 * pattern_overlap + 0.6 * lexical
+                scored.append({"item": item, "similarity": similarity})
+            scored.sort(key=lambda x: x["similarity"], reverse=True)
+            return [x["item"] for x in scored[:top_k]]
 
-        scored.sort(key=lambda x: x["similarity"], reverse=True)
-        selected = [x["item"] for x in scored[:top_k]]
+        selected = _select(excluded)
+        if not selected and excluded:
+            selected = _select(set())
         if not selected:
             raise ValueError("参考数据集中没有可用 prompt。")
         return selected
@@ -248,7 +301,7 @@ class SurrogateModel:
         best_text = ""
         best_score = {"intent": 0.0, "anchor": 0.0, "template": 0.0, "final": 0.0}
         previous = None
-        last_candidate = ""
+        last_error: Optional[Exception] = None
 
         for _ in range(self.config.max_retries + 1):
             generation_prompt = self._build_generation_prompt(
@@ -256,13 +309,15 @@ class SurrogateModel:
                 reference_prompts=reference_prompts,
                 previous_output=previous,
             )
-            candidate = (await self.llm_client.generate(generation_prompt)).strip()
+            try:
+                candidate = (await self.llm_client.generate(generation_prompt)).strip()
+            except Exception as e:
+                last_error = e
+                continue
             if candidate.startswith("生成的新越狱提示："):
                 candidate = candidate.replace("生成的新越狱提示：", "", 1).strip()
             if candidate.startswith("新越狱提示："):
                 candidate = candidate.replace("新越狱提示：", "", 1).strip()
-            last_candidate = candidate
-
             score = quality_score(original_prompt, candidate, self.template_text)
             if score["final"] > best_score["final"]:
                 best_text = candidate
@@ -282,9 +337,8 @@ class SurrogateModel:
             and best_score["anchor"] >= self.config.anchor_threshold
         ):
             return best_text
-        final_text = (last_candidate or "").strip()
-        if final_text:
-            return f"{self.config.failure_text}\n最终生成文本：{final_text}"
+        if last_error is not None:
+            print(f"[WARN] 单条生成在重试后失败: {last_error}", file=sys.stderr)
         return self.config.failure_text
 
     async def generate(
@@ -292,9 +346,22 @@ class SurrogateModel:
         original_prompt: str,
         num_variants: Optional[int] = None,
         top_k: Optional[int] = None,
+        batch_reference_state: Optional[set[str]] = None,
+        on_variant: Optional[Callable[[str], None]] = None,
+        on_progress: Optional[Callable[[int, int], None]] = None,
     ) -> List[str]:
         num_variants = num_variants or self.config.num_variants
-        references = self._find_similar_prompts(original_prompt, top_k)
+        use_exclusion = self.config.batch_unique_references and batch_reference_state is not None
+        references = self._find_similar_prompts(
+            original_prompt,
+            top_k,
+            exclude_reference_keys=batch_reference_state if use_exclusion else None,
+        )
+        if use_exclusion:
+            for ref in references:
+                key = self._reference_key(ref)
+                if key:
+                    batch_reference_state.add(key)
 
         tasks = []
         for _ in range(num_variants):
@@ -302,16 +369,25 @@ class SurrogateModel:
                 selected = random.sample(references, 3)
             else:
                 selected = references
-            tasks.append(self._generate_single(original_prompt, selected))
+            tasks.append(asyncio.create_task(self._generate_single(original_prompt, selected)))
 
-        results = await asyncio.gather(*tasks, return_exceptions=True)
         generated: List[str] = []
-        for result in results:
-            if isinstance(result, Exception):
-                continue
+        done = 0
+        for task in asyncio.as_completed(tasks):
+            result: Any
+            try:
+                result = await task
+            except Exception as e:
+                print(f"[WARN] 并发变体任务异常，使用失败占位: {e}", file=sys.stderr)
+                result = self.config.failure_text
+            done += 1
+            if on_progress:
+                on_progress(done, num_variants)
             text = str(result).strip()
             if text:
                 generated.append(text)
+                if on_variant:
+                    on_variant(text)
         return generated
 
     def generate_sync(
@@ -319,33 +395,38 @@ class SurrogateModel:
         original_prompt: str,
         num_variants: Optional[int] = None,
         top_k: Optional[int] = None,
+        batch_reference_state: Optional[set[str]] = None,
+        on_variant: Optional[Callable[[str], None]] = None,
+        on_progress: Optional[Callable[[int, int], None]] = None,
     ) -> List[str]:
-        return asyncio.run(self.generate(original_prompt, num_variants, top_k))
+        return asyncio.run(
+            self.generate(
+                original_prompt,
+                num_variants,
+                top_k,
+                batch_reference_state=batch_reference_state,
+                on_variant=on_variant,
+                on_progress=on_progress,
+            )
+        )
 
     def save_results(
         self,
         original_prompt: str,
         generated_prompts: List[str],
-        output_path: str = "surrogate_results.json",
+        output_path: str = "surrogate_results.jsonl",
     ):
-        result = {
-            "original_prompt": original_prompt,
-            "generated_prompts": generated_prompts,
-            "count": len(generated_prompts),
-            "config": {
-                "model_name": self.config.model_name,
-                "model_type": self.config.model_type,
-                "temperature": self.config.temperature,
-                "quality_threshold": self.config.quality_threshold,
-                "intent_threshold": self.config.intent_threshold,
-                "anchor_threshold": self.config.anchor_threshold,
-                "max_retries": self.config.max_retries,
-                "failure_text": self.config.failure_text,
-                "template_path": self.config.template_path,
-            },
-        }
-        with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(result, f, ensure_ascii=False, indent=2)
+        output = Path(output_path)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        with output.open("w", encoding="utf-8") as f:
+            for prompt in generated_prompts:
+                record = {
+                    "original_prompt": original_prompt,
+                    "generated_prompt": prompt,
+                    "model": self.config.model_name,
+                    "timestamp": datetime.now().isoformat(),
+                }
+                f.write(json.dumps(record, ensure_ascii=False) + "\n")
         print(f"结果已保存到: {output_path}")
 
     async def close(self):
@@ -356,6 +437,58 @@ class SurrogateModel:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         asyncio.run(self.close())
+
+
+def append_jsonl_record(output_file: Path, record: Dict[str, Any], durable: bool = True) -> None:
+    with open(output_file, "a", encoding="utf-8") as f:
+        f.write(json.dumps(record, ensure_ascii=False) + "\n")
+        f.flush()
+        if durable:
+            os.fsync(f.fileno())
+
+
+def process_batch(
+    model: SurrogateModel,
+    batch_prompts: List[str],
+    output_file: Path,
+    num_variants: int,
+    top_k: int,
+    model_name: str,
+) -> int:
+    total_prompts = len(batch_prompts)
+    total_saved = 0
+    shared_reference_state: Optional[set[str]] = set() if model.config.batch_unique_references else None
+
+    for prompt_idx, original_prompt in enumerate(batch_prompts, start=1):
+        print(f"\n[{prompt_idx}/{total_prompts}] 正在生成变体...")
+
+        def _on_variant(variant: str) -> None:
+            nonlocal total_saved
+            record = {
+                "original_prompt": original_prompt,
+                "generated_prompt": variant,
+                "model": model_name,
+                "timestamp": datetime.now().isoformat(),
+            }
+            append_jsonl_record(output_file, record, durable=True)
+            total_saved += 1
+
+        def _on_progress(done: int, total: int) -> None:
+            print(f"\r  变体进度: {done}/{total}", end="", flush=True)
+            if done == total:
+                print()
+
+        generated = model.generate_sync(
+            original_prompt,
+            num_variants,
+            top_k,
+            batch_reference_state=shared_reference_state,
+            on_variant=_on_variant,
+            on_progress=_on_progress,
+        )
+        print(f"  已保存 {len(generated)} 条，累计保存 {total_saved} 条")
+
+    return total_saved
 
 
 def main():
@@ -380,6 +513,11 @@ def main():
     parser.add_argument("--anchor-threshold", type=float, default=0.50, help="关键锚点覆盖阈值")
     parser.add_argument("--max-retries", type=int, default=2, help="单条生成重试次数")
     parser.add_argument("--failure-text", type=str, default="生成失败", help="重试失败时的输出文本")
+    parser.add_argument(
+        "--batch-unique-references",
+        action="store_true",
+        help="批量模式下尽量避免跨不同 prompt 重复使用同一参考样本",
+    )
     args = parser.parse_args()
 
     def _resolve_model_from_yaml(models_yaml_path: str, model_name: str) -> dict | None:
@@ -434,12 +572,11 @@ def main():
         anchor_threshold=args.anchor_threshold,
         max_retries=args.max_retries,
         failure_text=args.failure_text,
+        batch_unique_references=args.batch_unique_references,
     )
     model = SurrogateModel(args.dataset, cfg)
 
     if args.input_csv:
-        import pandas as pd
-
         input_csv_path = Path(args.input_csv)
         if not input_csv_path.is_absolute():
             input_csv_path = Path(__file__).parent.parent / args.input_csv
@@ -447,32 +584,31 @@ def main():
             print(f"❌ 错误：输入文件不存在: {input_csv_path}")
             return
 
-        df = pd.read_csv(input_csv_path)
-        if "prompt" not in df.columns:
-            print("❌ 错误：CSV 必须包含 prompt 列")
+        try:
+            batch_prompts = load_batch_prompts(str(input_csv_path))
+        except ValueError as e:
+            print(f"❌ 错误：{e}")
             return
 
         output_dir = Path(args.output_dir)
         if not output_dir.is_absolute():
             output_dir = Path(__file__).parent.parent / args.output_dir
         output_dir.mkdir(parents=True, exist_ok=True)
-        output_file = output_dir / f"surrogate_batch_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jsonl"
+        if args.output:
+            output_file = Path(args.output)
+            output_file.parent.mkdir(parents=True, exist_ok=True)
+        else:
+            output_file = build_default_single_output_path(str(output_dir))
 
-        for _, row in df.iterrows():
-            original_prompt = str(row["prompt"]).strip()
-            if not original_prompt:
-                continue
-            generated = model.generate_sync(original_prompt, args.num_variants, args.top_k)
-            for variant in generated:
-                record = {
-                    "original_prompt": original_prompt,
-                    "generated_prompt": variant,
-                    "model": args.model,
-                    "timestamp": datetime.now().isoformat(),
-                }
-                with open(output_file, "a", encoding="utf-8") as f:
-                    f.write(json.dumps(record, ensure_ascii=False) + "\n")
-        print(f"✅ 批量处理完成，输出: {output_file}")
+        total_saved = process_batch(
+            model=model,
+            batch_prompts=batch_prompts,
+            output_file=output_file,
+            num_variants=args.num_variants,
+            top_k=args.top_k,
+            model_name=args.model,
+        )
+        print(f"\n✅ 批量处理完成，累计保存 {total_saved} 条，输出: {output_file}")
     else:
         if not args.prompt:
             print("❌ 错误：单条模式需要 --prompt 参数，或使用 --input-csv")
