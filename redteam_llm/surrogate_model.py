@@ -163,7 +163,7 @@ def quality_score(
 class SurrogateConfig:
     model_name: str = "llama2"
     model: str = "llama2"
-    base_url: str = "http://localhost:11434"
+    base_url: str = ""
     api_key: Optional[str] = None
     model_type: str = "ollama"
     temperature: float = 0.8
@@ -497,8 +497,6 @@ def main():
     parser = argparse.ArgumentParser(description="Surrogate Model - 越狱提示生成器")
     parser.add_argument("--dataset", type=str, default="../Attack_Dataset/JailBench.csv")
     parser.add_argument("--model", type=str, default="llama2")
-    parser.add_argument("--base-url", type=str, default="http://localhost:11434")
-    parser.add_argument("--model-type", type=str, choices=["ollama", "openai", "openai_compatible"], default="ollama")
     parser.add_argument("--api-key", type=str, default=None)
     parser.add_argument("--models-config", type=str, default="models.yaml")
     parser.add_argument("--prompt", type=str, default=None)
@@ -534,35 +532,38 @@ def main():
         return None
 
     model_cfg = _resolve_model_from_yaml(args.models_config, args.model)
-    if model_cfg:
-        if "type" in model_cfg:
-            args.model_type = model_cfg.get("type", "ollama")
-        if "url" in model_cfg:
-            args.base_url = model_cfg.get("url")
-        elif "base_url" in model_cfg:
-            args.base_url = model_cfg.get("base_url")
+    if not model_cfg:
+        print(f"❌ 错误：在 {args.models_config} 中未找到模型 `{args.model}`")
+        return
 
-        if model_cfg.get("type") != "ollama":
-            key_path = Path(__file__).parent.parent / "config" / "api_keys.yaml"
-            if key_path.exists():
-                with open(key_path, "r", encoding="utf-8") as f:
-                    api_keys = yaml.safe_load(f) or {}
-                if args.model in api_keys:
-                    args.api_key = api_keys[args.model].get("api_key")
-                elif "api_key" in model_cfg:
-                    args.api_key = model_cfg.get("api_key")
-        elif "api_key" in model_cfg:
-            args.api_key = model_cfg.get("api_key")
+    model_type = str(model_cfg.get("type") or "ollama")
+    if model_type == "openai":
+        model_type = "openai_compatible"
 
-    actual_model = model_cfg.get("model", args.model) if model_cfg else args.model
-    if args.model_type == "openai":
-        args.model_type = "openai_compatible"
+    base_url = str(model_cfg.get("base_url") or "").strip()
+    if not base_url:
+        print(f"❌ 错误：模型 `{args.model}` 缺少 base_url 配置，请在 models.yaml 中补充")
+        return
+
+    if model_type != "ollama":
+        key_path = Path(__file__).parent.parent / "config" / "api_keys.yaml"
+        if key_path.exists():
+            with open(key_path, "r", encoding="utf-8") as f:
+                api_keys = yaml.safe_load(f) or {}
+            if args.model in api_keys:
+                args.api_key = api_keys[args.model].get("api_key")
+            elif "api_key" in model_cfg:
+                args.api_key = model_cfg.get("api_key")
+    elif "api_key" in model_cfg:
+        args.api_key = model_cfg.get("api_key")
+
+    actual_model = model_cfg.get("model", args.model)
 
     cfg = SurrogateConfig(
         model_name=args.model,
         model=actual_model,
-        base_url=args.base_url,
-        model_type=args.model_type,
+        base_url=base_url,
+        model_type=model_type,
         api_key=args.api_key,
         num_variants=args.num_variants,
         top_k=args.top_k,

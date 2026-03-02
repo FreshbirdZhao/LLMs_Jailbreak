@@ -3,7 +3,7 @@
 
 """
 loader.py —— 数据集加载器
-支持 CSV / JSON / YAML / URL 下载（可选）
+支持 CSV / JSON / YAML
 
 目标：把不同字段命名的数据集统一成测试脚本可用的标准格式：
 - id
@@ -148,25 +148,3 @@ class Loader:
             return self.load_from_csv(dataset_path)
 
         raise ValueError(f"不支持的数据集格式：{suffix}")
-
-    # ------------------------------
-    # URL 下载（可选）
-    # ------------------------------
-    def download_from_url(self, url: str, save_path: str) -> str:
-        """
-        下载远程数据集到本地（可选功能）。
-        为避免强依赖 requests，这里采用懒加载：仅调用本函数时才 import requests。
-        """
-        try:
-            import requests  # 懒加载，避免环境里没装 requests 导致 loader 无法 import
-        except ImportError as e:
-            raise ImportError("使用 download_from_url 需要安装 requests：pip install requests") from e
-
-        resp = requests.get(url, timeout=30)
-        resp.raise_for_status()
-
-        os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
-        with open(save_path, "wb") as f:
-            f.write(resp.content)
-
-        return save_path

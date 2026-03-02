@@ -177,6 +177,10 @@ class ModelTester:
             if m["name"] not in names:
                 continue
 
+            if not m.get("model") or not m.get("base_url") or not m.get("type"):
+                print(f"⚠ 模型 {m.get('name', '<unknown>')} 配置不完整（需包含 type/model/base_url），跳过")
+                continue
+
             if m.get("type") != "ollama":
                 if m["name"] not in api_keys:
                     print(f"⚠ 模型 {m['name']} 缺少 API KEY，跳过")
