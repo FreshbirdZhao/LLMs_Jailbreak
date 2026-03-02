@@ -14,6 +14,18 @@ local:
     type: ollama
     base_url: http://localhost:11434
     model: mistral:7b
+    
+# 非法模型
+  - name: zarigata/unfiltered-llama3:latest
+    type: ollama
+    base_url: http://localhost:11434
+    model: mistral:7b
+
+  - name: huihui_ai/gemma3-abliterated:latest
+    type: ollama
+    base_url: http://localhost:11434
+    model: mistral:7b
+
 
 commercial:
   # 商业模型默认不启用，需要通过 api_keys.yaml 提供密钥

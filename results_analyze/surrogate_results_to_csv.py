@@ -17,7 +17,7 @@ def _clean_prompt(text: Any) -> str:
     prompt = str(text).strip()
     if prompt.startswith("生成失败") and "最终生成文本：" in prompt:
         prompt = prompt.split("最终生成文本：", 1)[1].strip()
-    if prompt == "生成失败":
+    if prompt.startswith("生成失败"):
         return ""
     return prompt
 

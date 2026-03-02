@@ -211,6 +211,10 @@ class SurrogateModel:
             return OllamaClient(client_cfg)
         return OpenAICompatClient(client_cfg)
 
+    def _format_failure_with_reason(self, reason: str) -> str:
+        text = str(reason or "").strip() or "未知原因"
+        return f"{self.config.failure_text}（原因: {text}）"
+
     def _extract_attack_patterns(self, prompt: str) -> List[str]:
         patterns: List[str] = []
         prompt_lower = (prompt or "").lower()
@@ -339,7 +343,13 @@ class SurrogateModel:
             return best_text
         if last_error is not None:
             print(f"[WARN] 单条生成在重试后失败: {last_error}", file=sys.stderr)
-        return self.config.failure_text
+            return self._format_failure_with_reason(str(last_error))
+        return self._format_failure_with_reason(
+            "质量未达标"
+            f" (final={best_score['final']:.3f}<{self.config.quality_threshold:.3f},"
+            f" intent={best_score['intent']:.3f}<{self.config.intent_threshold:.3f},"
+            f" anchor={best_score['anchor']:.3f}<{self.config.anchor_threshold:.3f})"
+        )
 
     async def generate(
         self,
@@ -379,7 +389,7 @@ class SurrogateModel:
                 result = await task
             except Exception as e:
                 print(f"[WARN] 并发变体任务异常，使用失败占位: {e}", file=sys.stderr)
-                result = self.config.failure_text
+                result = self._format_failure_with_reason(str(e))
             done += 1
             if on_progress:
                 on_progress(done, num_variants)
