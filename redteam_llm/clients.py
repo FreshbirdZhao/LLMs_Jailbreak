@@ -2,19 +2,13 @@
 # -*- coding: utf-8 -*-
 """
 clients.py - LLM client adapters (Ollama + OpenAI-compatible)
-
-This module is intentionally generic: it does NOT embed any "jailbreak" prompt templates.
-You can plug any prompt_builder on top.
-
-Design goals:
-- One async interface: BaseClient.generate(prompt: str) -> str
-- Robust error messages for HTTP / network failures
-- Share a single httpx.AsyncClient for reuse
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Optional, Dict, Any
+import subprocess
+
 import httpx
 
 
@@ -26,21 +20,15 @@ class ClientConfig:
     temperature: float = 0.8
     max_tokens: int = 2000
     timeout_s: float = 60.0
-    # Ollama convenience:
-    # - If True, we will attempt to pull a model that is missing locally.
     auto_pull: bool = True
 
 
 class BaseClient:
-
     def __init__(self, cfg: ClientConfig, client: Optional[httpx.AsyncClient] = None):
         self.cfg = cfg
         self._client = client or httpx.AsyncClient(timeout=self.cfg.timeout_s)
 
     async def generate(self, prompt: str) -> str:
-        # Best-effort: verify server and pull missing models.
-        self._ensure_server()
-        self._ensure_model_available()
         raise NotImplementedError
 
     async def aclose(self):
@@ -48,58 +36,44 @@ class BaseClient:
 
 
 class OllamaClient(BaseClient):
-    """
-    Ollama HTTP API adapter:
-      POST {base_url}/api/generate
-    """
-def _ensure_server(self) -> None:
-    # Best-effort ping; raise a helpful message if Ollama isn't reachable.
-    url = f"{self.cfg.base_url.rstrip('/')}/api/tags"
-    try:
-        # Use a short timeout for health check
-        r = httpx.get(url, timeout=5.0)
-        r.raise_for_status()
-    except Exception as e:
-        raise RuntimeError(
-            f"Ollama server not reachable at {self.cfg.base_url}. "
-            "Start it with `ollama serve` (or ensure the service is running)."
-        ) from e
+    async def _ensure_server(self) -> None:
+        url = f"{self.cfg.base_url.rstrip('/')}/api/tags"
+        try:
+            resp = await self._client.get(url, timeout=5.0)
+            resp.raise_for_status()
+        except Exception as e:
+            raise RuntimeError(
+                f"Ollama server not reachable at {self.cfg.base_url}. "
+                "Start it with `ollama serve`."
+            ) from e
 
-def _ensure_model_available(self) -> None:
-    # If the model isn't present locally, optionally auto-pull it.
-    # This avoids having to run `ollama pull` manually.
-    if not self.cfg.auto_pull:
-        return
-    try:
-        import subprocess
-        import shlex
-
-        # Query local models via CLI (fast + reliable)
-        proc = subprocess.run(
-            ["ollama", "list"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if proc.returncode != 0:
-            # If CLI isn't available, we can't auto-pull; just return.
+    def _ensure_model_available(self) -> None:
+        if not self.cfg.auto_pull:
             return
-        names = []
-        for line in proc.stdout.splitlines()[1:]:
-            line = line.strip()
-            if not line:
-                continue
-            names.append(line.split()[0])
-
-        if self.cfg.model_name not in names:
-            subprocess.run(
-                ["ollama", "pull", self.cfg.model_name],
-                check=True,
+        try:
+            proc = subprocess.run(
+                ["ollama", "list"],
+                capture_output=True,
+                text=True,
+                check=False,
             )
-    except Exception:
-        # Best-effort only; do not fail generation if pulling fails.
-        return
+            if proc.returncode != 0:
+                return
+            names = []
+            for line in proc.stdout.splitlines()[1:]:
+                line = line.strip()
+                if line:
+                    names.append(line.split()[0])
+
+            if self.cfg.model_name not in names:
+                subprocess.run(["ollama", "pull", self.cfg.model_name], check=True)
+        except Exception:
+            return
+
     async def generate(self, prompt: str) -> str:
+        await self._ensure_server()
+        self._ensure_model_available()
+
         url = f"{self.cfg.base_url.rstrip('/')}/api/generate"
         payload: Dict[str, Any] = {
             "model": self.cfg.model_name,
@@ -110,7 +84,6 @@ def _ensure_model_available(self) -> None:
                 "num_predict": self.cfg.max_tokens,
             },
         }
-
         try:
             resp = await self._client.post(url, json=payload)
             resp.raise_for_status()
@@ -130,10 +103,6 @@ def _ensure_model_available(self) -> None:
 
 
 class OpenAICompatClient(BaseClient):
-    """
-    OpenAI-compatible adapter:
-      POST {base_url}/chat/completions
-    """
     async def generate(self, prompt: str) -> str:
         url = f"{self.cfg.base_url.rstrip('/')}/chat/completions"
         headers: Dict[str, str] = {}
@@ -143,7 +112,7 @@ class OpenAICompatClient(BaseClient):
         payload: Dict[str, Any] = {
             "model": self.cfg.model_name,
             "messages": [
-                {"role": "system", "content": "You are a helpful assistant that rewrites prompts for testing and robustness."},
+                {"role": "system", "content": "You rewrite prompts while preserving intent and style constraints."},
                 {"role": "user", "content": prompt},
             ],
             "temperature": self.cfg.temperature,
