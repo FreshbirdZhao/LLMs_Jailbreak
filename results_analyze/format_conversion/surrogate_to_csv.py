@@ -7,6 +7,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -100,11 +101,10 @@ def convert_surrogate_json_to_csv(input_path: str, output_dir: str, output_name:
     if output_name:
         out_path = out_dir / output_name
     else:
-        out_path = out_dir / f"{in_path.stem}_for_jailbreak.csv"
+        out_path = out_dir / f"surrogate_{datetime.now().strftime('%y%m%d')}.csv"
 
     records = _load_records(in_path)
 
-    # Keep a stable schema; loader.py will consume `prompt` directly.
     fields = ["prompt", "original_prompt", "variant_index", "model", "timestamp", "source_file"]
     with out_path.open("w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fields)
