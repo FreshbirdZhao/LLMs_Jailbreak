@@ -12,7 +12,12 @@ from results_analyze.jailbreak_metrics.judges.llm_judge import LLMJudge
 from results_analyze.jailbreak_metrics.judges.structured_policy_judge import StructuredPolicyJudge
 from results_analyze.jailbreak_metrics.llm_clients import build_llm_client
 from results_analyze.jailbreak_metrics.pipeline import evaluate_records
-from results_analyze.jailbreak_metrics.plotting import plot_risk_distribution, plot_success_rate
+from results_analyze.jailbreak_metrics.plotting import (
+    plot_risk_distribution,
+    plot_risk_heatmap,
+    plot_success_rate,
+    plot_uncertainty_overview,
+)
 from results_analyze.jailbreak_metrics.stats import compute_group_metrics
 
 DEFAULT_OUTPUT_ROOT = Path(__file__).resolve().parent / "jailbreak_analyze"
@@ -45,6 +50,11 @@ def run_cli(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Analyze jailbreak JSONL results with modular judges")
     parser.add_argument("--input-dir", required=True, help="Directory containing .jsonl files")
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_ROOT), help="Root directory to write mode-specific outputs")
+    parser.add_argument(
+        "--output-run-subdir",
+        default="",
+        help="Optional run-level subdirectory under mode output dir (e.g. <root>/<mode>/<subdir>)",
+    )
     parser.add_argument("--judge-mode", choices=["keyword", "llm", "hybrid"], default="keyword")
     parser.add_argument("--llm-provider", choices=["ollama", "external"], default="ollama")
     parser.add_argument("--llm-model", default="qwen2:latest")
@@ -61,6 +71,8 @@ def run_cli(argv: list[str] | None = None) -> int:
 
     output_root = Path(args.output_dir)
     output_dir = output_root / args.judge_mode
+    if args.output_run_subdir:
+        output_dir = output_dir / args.output_run_subdir
     output_dir.mkdir(parents=True, exist_ok=True)
     figures_dir = output_dir / "figures"
     figures_dir.mkdir(parents=True, exist_ok=True)
@@ -78,6 +90,8 @@ def run_cli(argv: list[str] | None = None) -> int:
 
     plot_success_rate(group_df, figures_dir)
     plot_risk_distribution(group_df, figures_dir)
+    plot_uncertainty_overview(group_df, figures_dir)
+    plot_risk_heatmap(group_df, figures_dir)
     return 0
 
 

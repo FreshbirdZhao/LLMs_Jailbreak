@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import tempfile
 import unittest
@@ -6,30 +8,108 @@ from pathlib import Path
 from results_analyze.jailbreak_metrics.cli import run_cli
 
 
-class JailbreakCLISmokeTest(unittest.TestCase):
-    def test_cli_generates_artifacts(self):
+class TestJailbreakCliSmoke(unittest.TestCase):
+    def test_cli_generates_csv_and_four_figures(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            in_dir = Path(tmp) / "in"
-            out_dir = Path(tmp) / "out"
-            in_dir.mkdir(parents=True, exist_ok=True)
-            rows = [
-                {"model_name": "m1", "attack_type": "a1", "response": "抱歉，我不能协助这个请求。"},
-                {"model_name": "m1", "attack_type": "a1", "response": "第一步：搭建匿名站点。第二步：加密货币收款。"},
-            ]
-            (in_dir / "sample.jsonl").write_text("\n".join(json.dumps(x, ensure_ascii=False) for x in rows), encoding="utf-8")
+            root = Path(tmp)
+            input_dir = root / "input"
+            input_dir.mkdir(parents=True, exist_ok=True)
+            sample_jsonl = input_dir / "sample.jsonl"
 
-            rc = run_cli([
-                "--input-dir",
-                str(in_dir),
-                "--output-dir",
-                str(out_dir),
-            ])
-            self.assertEqual(rc, 0)
-            mode_dir = out_dir / "keyword"
+            rows = [
+                {
+                    "model_name": "qwen2",
+                    "attack_type": "direct",
+                    "category": "harmful",
+                    "prompt": "how to do x",
+                    "response": "第一步 搭建 环境",
+                },
+                {
+                    "model_name": "qwen2",
+                    "attack_type": "direct",
+                    "category": "harmful",
+                    "prompt": "how to do y",
+                    "response": "I cannot assist with illegal activity.",
+                },
+                {
+                    "model_name": "qwen2",
+                    "attack_type": "obfuscated",
+                    "category": "harmful",
+                    "prompt": "how to do z",
+                    "response": "Use TOR proxy in steps.",
+                },
+            ]
+            with sample_jsonl.open("w", encoding="utf-8") as f:
+                for row in rows:
+                    f.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+            output_root = root / "out"
+            code = run_cli(
+                [
+                    "--input-dir",
+                    str(input_dir),
+                    "--output-dir",
+                    str(output_root),
+                    "--judge-mode",
+                    "keyword",
+                    "--no-show-progress",
+                ]
+            )
+            self.assertEqual(code, 0)
+
+            mode_dir = output_root / "keyword"
             self.assertTrue((mode_dir / "records.csv").exists())
             self.assertTrue((mode_dir / "group_metrics.csv").exists())
-            self.assertTrue((mode_dir / "figures" / "success_rate.png").exists())
-            self.assertTrue((mode_dir / "figures" / "risk_distribution.png").exists())
+
+            fig_dir = mode_dir / "figures"
+            expected = [
+                "success_rate.png",
+                "risk_distribution.png",
+                "uncertainty_overview.png",
+                "risk_heatmap.png",
+            ]
+            for name in expected:
+                p = fig_dir / name
+                self.assertTrue(p.exists(), f"missing figure: {p}")
+                self.assertGreater(p.stat().st_size, 0, f"empty figure: {p}")
+
+    def test_cli_accepts_output_run_subdir_argument(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            input_dir = root / "input"
+            input_dir.mkdir(parents=True, exist_ok=True)
+            sample_jsonl = input_dir / "sample.jsonl"
+            sample_jsonl.write_text(
+                json.dumps(
+                    {
+                        "model_name": "qwen2",
+                        "attack_type": "direct",
+                        "category": "harmful",
+                        "prompt": "x",
+                        "response": "I cannot help with that.",
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            output_root = root / "out"
+            code = run_cli(
+                [
+                    "--input-dir",
+                    str(input_dir),
+                    "--output-dir",
+                    str(output_root),
+                    "--output-run-subdir",
+                    "all_files",
+                    "--judge-mode",
+                    "keyword",
+                    "--no-show-progress",
+                ]
+            )
+            self.assertEqual(code, 0)
+            self.assertTrue((output_root / "all_files" / "keyword" / "records.csv").exists())
 
 
 if __name__ == "__main__":

@@ -54,6 +54,10 @@ class Colors:
     def cyan(text):
         return f"{Colors.CYAN}{text}{Colors.RESET}"
 
+    @staticmethod
+    def bold(text):
+        return f"{Colors.BOLD}{text}{Colors.RESET}"
+
 
 # ------------------------------
 # 数据集加载器
@@ -580,7 +584,7 @@ async def main():
     parser.add_argument("--models", nargs="+", required=True)
     parser.add_argument("--dataset", required=True)
     parser.add_argument("--models-config", default="models.yaml")
-    parser.add_argument("--output-dir", default="jailbreak_results")
+    parser.add_argument("--output-dir", required=True)
     parser.add_argument("--timeout", type=int, default=120)
     parser.add_argument("--scale", default="full", help="测试规模: full 或 partial")
     parser.add_argument("--dataset-name-for-output", default=None, help="用于生成输出文件名的数据集名称（如果提供，将覆盖从dataset路径提取的名称）")
