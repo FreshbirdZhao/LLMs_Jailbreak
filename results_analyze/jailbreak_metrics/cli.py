@@ -37,6 +37,8 @@ def _build_base_judge(args):
             "base_url": args.llm_base_url,
             "api_key": args.llm_api_key,
             "timeout": args.llm_timeout,
+            "max_retries": args.llm_max_retries,
+            "retry_backoff": args.llm_retry_backoff,
         }
     )
     llm = LLMJudge(client=llm_client)
@@ -61,11 +63,19 @@ def run_cli(argv: list[str] | None = None) -> int:
     parser.add_argument("--llm-base-url", default="")
     parser.add_argument("--llm-api-key", default="")
     parser.add_argument("--llm-timeout", type=int, default=30)
+    parser.add_argument("--llm-max-retries", type=int, default=2)
+    parser.add_argument("--llm-retry-backoff", type=float, default=1.0)
     parser.add_argument(
         "--show-progress",
         action=argparse.BooleanOptionalAction,
         default=True,
         help="Show per-record judging progress (default: on)",
+    )
+    parser.add_argument(
+        "--resume",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Resume from partial progress if checkpoint files exist (default: on)",
     )
     args = parser.parse_args(argv)
 
@@ -82,6 +92,8 @@ def run_cli(argv: list[str] | None = None) -> int:
         base_judge=_build_base_judge(args),
         policy_judge=StructuredPolicyJudge(),
         progress_callback=_build_progress_callback() if args.show_progress else None,
+        checkpoint_dir=output_dir,
+        resume=args.resume,
     )
     group_df = compute_group_metrics(records_df)
 
