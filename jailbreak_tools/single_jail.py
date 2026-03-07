@@ -21,6 +21,20 @@ import httpx
 import pandas as pd
 from asyncio import Semaphore
 
+# Ensure repo-root packages are importable when this file is executed directly.
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from jailbreak_defense import (
+    DefenseAction,
+    DefenseEngine,
+    InputDefenseModule,
+    InteractionDefenseModule,
+    OutputDefenseModule,
+    load_defense_config,
+)
+
 # ------------------------------
 # 颜色支持（ANSI转义码）
 # ------------------------------
@@ -65,8 +79,11 @@ class Colors:
 try:
     from loader import Loader
 except ImportError:
-    print("错误：未找到 loader.py")
-    sys.exit(1)
+    try:
+        from jailbreak_tools.loader import Loader
+    except ImportError:
+        print("错误：未找到 loader.py")
+        sys.exit(1)
 
 
 # ====================================================
@@ -92,6 +109,9 @@ class ModelTester:
         resume: bool,
         retry_backoff_base: float,
         retry_backoff_cap: float,
+        enable_defense: bool = False,
+        defense_config_path: str | None = None,
+        defense_archive_format: str = "jsonl",
     ):
         self.models_config = self._load_models_config(models_config_path)
 
@@ -151,6 +171,43 @@ class ModelTester:
         self.total_tests = 0      # 需要完成的“用例数”（跳过已完成的不计入）
         self.counter = 0          # 已终结用例数（成功+最终失败）
         self.error_count = 0      # 最终失败用例数（丢弃不保存）
+        self.enable_defense = enable_defense
+        self.defense_engine: DefenseEngine | None = None
+
+        if self.enable_defense:
+            cfg = load_defense_config(defense_config_path)
+            enabled_layers = set(cfg.get("enabled_layers", []))
+            input_module = None
+            interaction_module = None
+            output_module = None
+
+            if "input" in enabled_layers:
+                input_cfg = cfg.get("input", {})
+                input_module = InputDefenseModule(
+                    block_threshold=int(input_cfg.get("block_threshold", 80)),
+                    rewrite_threshold=int(input_cfg.get("rewrite_threshold", 40)),
+                )
+
+            if "interaction" in enabled_layers:
+                inter_cfg = cfg.get("interaction", {})
+                interaction_module = InteractionDefenseModule(
+                    block_risk=int(inter_cfg.get("block_risk", 80)),
+                    warning_risk=int(inter_cfg.get("warning_risk", 40)),
+                    max_round=int(inter_cfg.get("max_round", 3)),
+                )
+
+            if "output" in enabled_layers:
+                out_cfg = cfg.get("output", {})
+                output_module = OutputDefenseModule(
+                    archive_path=Path(out_cfg.get("archive_path", "jailbreak_results/defense_audit.jsonl")),
+                    archive_format=str(out_cfg.get("archive_format", defense_archive_format)),
+                )
+
+            self.defense_engine = DefenseEngine(
+                input_module=input_module,
+                interaction_module=interaction_module,
+                output_module=output_module,
+            )
 
     # ---------------------------
     # 加载模型配置
@@ -383,7 +440,46 @@ class ModelTester:
         if key in self._done:
             return
 
-        response, elapsed, http_status = await self._call_model(model, case["prompt"])
+        prompt_to_send = case["prompt"]
+        defense_context = None
+        defense_pre = None
+
+        if self.enable_defense and self.defense_engine is not None:
+            defense_context = self.defense_engine.build_context_from_case(
+                case=case,
+                model_name=model_name,
+                round_idx=1,
+            )
+            defense_pre = self.defense_engine.apply_pre_call_defense(defense_context)
+            if defense_context.sanitized_prompt:
+                prompt_to_send = defense_context.sanitized_prompt
+
+            if not defense_context.model_call_allowed or defense_pre.action in {DefenseAction.BLOCK, DefenseAction.TRUNCATE}:
+                blocked_response = defense_pre.rewritten_text or "Request blocked by defense policy."
+                record = {
+                    "timestamp": datetime.now().isoformat(),
+                    "model_name": model_name,
+                    "test_id": case_id,
+                    "test_name": case["name"],
+                    "category": case.get("category", "unknown"),
+                    "attack_type": case.get("attack_type", "unknown"),
+                    "prompt": case["prompt"],
+                    "response": blocked_response,
+                    "http_status": None,
+                    "elapsed_time": 0.0,
+                    "defense_enabled": True,
+                    "defense_action": defense_pre.action.value,
+                    "defense_risk_level": defense_pre.risk_level,
+                    "defense_reasons": defense_pre.reasons,
+                    "defense_trace": defense_context.decision_history,
+                }
+                self._write_jsonl(record)
+                self._done.add(key)
+                self.counter += 1
+                await self._render_progress(case_id, Colors.warning("⚠已拦截"), 0.0)
+                return
+
+        response, elapsed, http_status = await self._call_model(model, prompt_to_send)
         is_error = str(response).startswith("错误") or (http_status is None)
 
         if is_error:
@@ -408,6 +504,13 @@ class ModelTester:
             return
 
         # 成功：才保存（并删除 retry 字段输出：不再写 retry）
+        final_response = response
+        defense_post = None
+        if self.enable_defense and self.defense_engine is not None and defense_context is not None:
+            defense_post = self.defense_engine.apply_post_call_defense(defense_context, response)
+            if defense_context.sanitized_response:
+                final_response = defense_context.sanitized_response
+
         record = {
             "timestamp": datetime.now().isoformat(),
             "model_name": model_name,
@@ -416,10 +519,24 @@ class ModelTester:
             "category": case.get("category", "unknown"),
             "attack_type": case.get("attack_type", "unknown"),
             "prompt": case["prompt"],
-            "response": response,
+            "response": final_response,
             "http_status": http_status,
             "elapsed_time": round(elapsed, 2),
         }
+        if self.enable_defense and defense_context is not None:
+            action = defense_post.action if defense_post else (defense_pre.action if defense_pre else DefenseAction.ALLOW)
+            risk_level = defense_post.risk_level if defense_post else (defense_pre.risk_level if defense_pre else 0)
+            reasons = defense_post.reasons if defense_post else (defense_pre.reasons if defense_pre else [])
+            record.update(
+                {
+                    "defense_enabled": True,
+                    "defense_action": action.value,
+                    "defense_risk_level": risk_level,
+                    "defense_reasons": reasons,
+                    "defense_trace": defense_context.decision_history,
+                    "defense_prompt": prompt_to_send,
+                }
+            )
         self._write_jsonl(record)
 
         self._done.add(key)
@@ -601,6 +718,9 @@ async def main():
     # ✅ 重试退避：避免错误时疯狂重试导致并发测试无效
     parser.add_argument("--retry-backoff-base", type=float, default=2.0, help="重试退避基数（秒）")
     parser.add_argument("--retry-backoff-cap", type=float, default=30.0, help="重试退避上限（秒）")
+    parser.add_argument("--enable-defense", action="store_true", help="启用输入/交互/输出三层防御")
+    parser.add_argument("--defense-config", default=None, help="防御配置文件路径（YAML）")
+    parser.add_argument("--defense-archive-format", choices=["jsonl", "sqlite"], default="jsonl", help="防御归档格式")
 
     args = parser.parse_args()
 
@@ -613,6 +733,9 @@ async def main():
         resume=args.resume,
         retry_backoff_base=args.retry_backoff_base,
         retry_backoff_cap=args.retry_backoff_cap,
+        enable_defense=args.enable_defense,
+        defense_config_path=args.defense_config,
+        defense_archive_format=args.defense_archive_format,
     )
     tester.setup_output(args.output_dir, args.models, args.dataset, args.scale, args.dataset_name_for_output)
 
