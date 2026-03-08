@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from results_analyze.jailbreak_metrics.plotting import (
+from Analyze.plotting import (
     _group_label_df,
     plot_risk_distribution,
     plot_risk_heatmap,
@@ -20,6 +20,7 @@ class TestJailbreakPlotting(unittest.TestCase):
         return pd.DataFrame(
             [
                 {
+                    "source_file": "jailbreak:file_a.jsonl",
                     "model_name": "qwen2",
                     "attack_type": "direct",
                     "total": 10,
@@ -36,6 +37,7 @@ class TestJailbreakPlotting(unittest.TestCase):
                     "risk_4_ratio": 0.2,
                 },
                 {
+                    "source_file": "defense_input_layer:file_b.jsonl",
                     "model_name": "qwen2",
                     "attack_type": "obfuscated",
                     "total": 12,
@@ -56,8 +58,7 @@ class TestJailbreakPlotting(unittest.TestCase):
 
     def _empty_group_df(self) -> pd.DataFrame:
         cols = [
-            "model_name",
-            "attack_type",
+            "source_file",
             "total",
             "yes_count",
             "uncertain_count",
@@ -95,10 +96,13 @@ class TestJailbreakPlotting(unittest.TestCase):
             self._assert_non_empty(plot_uncertainty_overview(df, out))
             self._assert_non_empty(plot_risk_heatmap(df, out))
 
-    def test_group_labels_hide_attack_type(self) -> None:
+    def test_group_labels_use_source_file(self) -> None:
         df = self._sample_group_df()
         labeled = _group_label_df(df)
-        self.assertEqual(labeled["group_label"].tolist(), ["qwen2", "qwen2 (2)"])
+        self.assertEqual(
+            labeled["group_label"].tolist(),
+            ["jailbreak:file_a.jsonl", "defense_input_layer:file_b.jsonl"],
+        )
 
 
 if __name__ == "__main__":

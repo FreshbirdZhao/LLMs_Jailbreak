@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from results_analyze.jailbreak_metrics.cli import run_cli
+from Analyze.cli import run_cli
 
 
 class TestJailbreakCliSmoke(unittest.TestCase):
@@ -109,7 +109,63 @@ class TestJailbreakCliSmoke(unittest.TestCase):
                 ]
             )
             self.assertEqual(code, 0)
-            self.assertTrue((output_root / "all_files" / "keyword" / "records.csv").exists())
+            self.assertTrue((output_root / "keyword" / "all_files" / "records.csv").exists())
+
+    def test_cli_writes_source_manifest_when_provided(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            run_code = f"test_run_{root.name[-6:]}"
+            registry_path = (
+                Path("/home/jellyz/Experiment/Results")
+                / "directory"
+                / f"{run_code}.json"
+            )
+            input_dir = root / "input"
+            input_dir.mkdir(parents=True, exist_ok=True)
+            (input_dir / "sample.jsonl").write_text(
+                json.dumps(
+                    {
+                        "model_name": "qwen2",
+                        "attack_type": "direct",
+                        "category": "harmful",
+                        "prompt": "x",
+                        "response": "I cannot help with that.",
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            manifest = root / "sources.tsv"
+            manifest.write_text(
+                "jailbreak:sample.jsonl\t/home/demo/jailbreak_results/sample.jsonl\t001_sample.jsonl\n",
+                encoding="utf-8",
+            )
+
+            output_root = root / "out"
+            code = run_cli(
+                [
+                    "--input-dir",
+                    str(input_dir),
+                    "--output-dir",
+                    str(output_root),
+                    "--output-run-subdir",
+                    run_code,
+                    "--judge-mode",
+                    "keyword",
+                    "--analysis-code",
+                    run_code,
+                    "--source-manifest-file",
+                    str(manifest),
+                    "--no-show-progress",
+                ]
+            )
+            self.assertEqual(code, 0)
+            self.assertTrue((output_root / "keyword" / run_code / "input_sources.json").exists())
+            self.assertTrue(registry_path.exists())
+            if registry_path.exists():
+                registry_path.unlink()
 
 
 if __name__ == "__main__":

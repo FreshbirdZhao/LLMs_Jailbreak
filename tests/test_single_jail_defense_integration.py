@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from jailbreak_tools.single_jail import ModelTester
+from Jailbreak.jailbreak_tools.single_jail import ModelTester
 
 
 class TestSingleJailDefenseIntegration(unittest.TestCase):

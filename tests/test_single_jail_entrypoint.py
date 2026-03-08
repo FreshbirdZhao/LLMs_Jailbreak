@@ -9,7 +9,7 @@ from pathlib import Path
 class TestSingleJailEntrypoint(unittest.TestCase):
     def test_script_runs_help_without_import_error(self) -> None:
         repo_root = Path(__file__).resolve().parents[1]
-        script = repo_root / "jailbreak_tools" / "single_jail.py"
+        script = repo_root / "Jailbreak" / "jailbreak_tools" / "single_jail.py"
 
         proc = subprocess.run(
             [sys.executable, str(script), "--help"],
@@ -23,7 +23,7 @@ class TestSingleJailEntrypoint(unittest.TestCase):
             0,
             msg=f"stdout:\n{proc.stdout}\n\nstderr:\n{proc.stderr}",
         )
-        self.assertNotIn("No module named 'jailbreak_defense'", proc.stderr)
+        self.assertNotIn("No module named 'Defense.jailbreak_defense'", proc.stderr)
 
 
 if __name__ == "__main__":

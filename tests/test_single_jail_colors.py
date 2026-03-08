@@ -13,7 +13,7 @@ if "loader" not in sys.modules:
     loader_stub.Loader = _Loader
     sys.modules["loader"] = loader_stub
 
-from jailbreak_tools.single_jail import Colors
+from Jailbreak.jailbreak_tools.single_jail import Colors
 
 
 class TestSingleJailColors(unittest.TestCase):

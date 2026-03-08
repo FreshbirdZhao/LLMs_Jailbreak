@@ -4,8 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from jailbreak_defense.output_layer import OutputDefenseModule
-from jailbreak_defense.types import DefenseAction, DefenseContext
+from Defense.jailbreak_defense.output import OutputDefenseModule
+from Defense.jailbreak_defense.types import DefenseAction, DefenseContext
 
 
 class TestOutputDefenseModule(unittest.TestCase):

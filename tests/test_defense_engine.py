@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import unittest
 
-from jailbreak_defense.engine import DefenseEngine
-from jailbreak_defense.types import DefenseAction, DefenseDecision
+from Defense.jailbreak_defense.engine import DefenseEngine
+from Defense.jailbreak_defense.types import DefenseAction, DefenseDecision
 
 
 class _StubModule:

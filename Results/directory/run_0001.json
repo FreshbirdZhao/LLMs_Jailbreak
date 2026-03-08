@@ -1,0 +1,13 @@
+{
+  "analysis_code": "run_0001",
+  "judge_mode": "keyword",
+  "created_at": "2026-03-08T16:55:11.046741",
+  "output_dir": "/home/jellyz/Experiment/Results/keyword/run_0001",
+  "sources": [
+    {
+      "label": "jailbreak:deepseek-r1_1.5b_jailbench_partial_single_0305.jsonl",
+      "source_path": "/home/jellyz/Experiment/Jailbreak/jailbreak_results/deepseek-r1_1.5b_jailbench_partial_single_0305.jsonl",
+      "copied_filename": "1_jailbreak_deepseek-r1_1.5b_jailbench_partial_single_0305.jsonl"
+    }
+  ]
+}

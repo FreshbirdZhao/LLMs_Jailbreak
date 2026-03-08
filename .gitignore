@@ -9,7 +9,7 @@ dist/
 build/
 
 # Virtual Environment
-my_ai/
+Jelly_Z/
 venv/
 env/
 ENV/

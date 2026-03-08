@@ -6,9 +6,9 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from results_analyze.jailbreak_metrics.llm_clients import OllamaClient
-from results_analyze.jailbreak_metrics.pipeline import evaluate_records
-from results_analyze.jailbreak_metrics.schema import JudgeDecision
+from Analyze.llm_clients import OllamaClient
+from Analyze.pipeline import evaluate_records
+from Analyze.schema import JudgeDecision
 
 
 class _PassThroughPolicyJudge:
@@ -101,7 +101,7 @@ class TestJailbreakResilience(unittest.TestCase):
 
         with mock.patch.object(client, "_recover_service") as mock_recover:
             with mock.patch(
-                "results_analyze.jailbreak_metrics.llm_clients.request.urlopen",
+                "Analyze.llm_clients.request.urlopen",
                 side_effect=[
                     TimeoutError("timed out"),
                     _DummyHTTPResponse({"response": '{"is_jailbreak":"no","risk_level":0,"evidence_spans":[]}'}),

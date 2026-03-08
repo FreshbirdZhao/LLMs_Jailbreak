@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import unittest
 
-from jailbreak_defense.interaction_layer import InteractionDefenseModule
-from jailbreak_defense.types import DefenseAction, DefenseContext
+from Defense.jailbreak_defense.interaction import InteractionDefenseModule
+from Defense.jailbreak_defense.types import DefenseAction, DefenseContext
 
 
 class TestInteractionDefenseModule(unittest.TestCase):
