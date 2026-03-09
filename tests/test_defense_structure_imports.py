@@ -4,14 +4,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from Defense.jailbreak_defense import (
+from Defense.defense_mode import (
     InputDefenseModule,
     InteractionDefenseModule,
     OutputDefenseModule,
 )
-from Defense.jailbreak_defense.input import InputDefenseModule as InputFromNewPkg
-from Defense.jailbreak_defense.interaction import InteractionDefenseModule as InteractionFromNewPkg
-from Defense.jailbreak_defense.output import OutputDefenseModule as OutputFromNewPkg
+from Defense.defense_mode.input import InputDefenseModule as InputFromNewPkg
+from Defense.defense_mode.interaction import InteractionDefenseModule as InteractionFromNewPkg
+from Defense.defense_mode.output import OutputDefenseModule as OutputFromNewPkg
 
 
 class TestDefenseStructureImports(unittest.TestCase):

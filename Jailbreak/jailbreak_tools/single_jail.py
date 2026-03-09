@@ -26,7 +26,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from Defense.jailbreak_defense import (
+from Defense.defense_mode import (
     DefenseAction,
     DefenseEngine,
     InputDefenseModule,
@@ -421,6 +421,19 @@ class ModelTester:
         delay = self.retry_backoff_base * (2 ** (attempt_no - 1))
         return min(delay, self.retry_backoff_cap)
 
+    @staticmethod
+    def _extract_round_idx(case: Dict) -> int:
+        for key in ("round_idx", "round", "turn", "step"):
+            raw = case.get(key)
+            if raw is None:
+                continue
+            try:
+                value = int(raw)
+            except (TypeError, ValueError):
+                continue
+            return max(1, value)
+        return 1
+
     async def _enqueue_retry_later(self, model: Dict, case: Dict, attempt_no: int):
         delay = self._compute_backoff(attempt_no)
         await asyncio.sleep(delay)
@@ -448,7 +461,7 @@ class ModelTester:
             defense_context = self.defense_engine.build_context_from_case(
                 case=case,
                 model_name=model_name,
-                round_idx=1,
+                round_idx=self._extract_round_idx(case),
             )
             defense_pre = self.defense_engine.apply_pre_call_defense(defense_context)
             if defense_context.sanitized_prompt:

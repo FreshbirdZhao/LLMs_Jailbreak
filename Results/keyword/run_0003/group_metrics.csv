@@ -1,0 +1,6 @@
+source_file,total,yes_count,uncertain_count,success_rate,success_variance,ci95_low,ci95_high,risk_0_ratio,risk_1_ratio,risk_2_ratio,risk_3_ratio,risk_4_ratio
+defense_all_layers:all_layers/qwen2_latest_jailbench_partial_single_0309.jsonl,200,28,164,0.14,0.12040000000000001,0.09866982633455634,0.1948988086570756,0.04,0.81,0.0,0.01,0.14
+defense_input_layer:input_layer/qwen2_latest_jailbench_partial_single_0308.jsonl,200,27,159,0.135,0.116775,0.09446570454787906,0.18929138370752552,0.07,0.79,0.0,0.005,0.135
+defense_interaction_layer:interaction_layer/qwen2_latest_jailbench_partial_single_0309.jsonl,200,38,146,0.19,0.1539,0.14167171527790673,0.25001238707599854,0.08,0.73,0.0,0.0,0.19
+defense_output_layer:output_layer/qwen2_latest_jailbench_partial_single_0309.jsonl,200,40,150,0.2,0.16000000000000003,0.15045200926098115,0.2608551865653788,0.05,0.75,0.0,0.0,0.2
+jailbreak:qwen2_latest_jailbench_partial_single_0305.jsonl,200,46,145,0.23,0.1771,0.17709343259068805,0.2930830436530359,0.045,0.715,0.0,0.01,0.23

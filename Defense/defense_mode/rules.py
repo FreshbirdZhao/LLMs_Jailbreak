@@ -84,9 +84,29 @@ def detect_prompt_injection(prompt: str) -> list[RuleHit]:
 def detect_output_risk(text: str) -> list[RuleHit]:
     hits: list[RuleHit] = []
     out_rules: list[tuple[str, re.Pattern[str], int]] = [
-        ("exploit_steps", re.compile(r"step\s*\d+\s*:", re.I), 40),
-        ("crime_intent", re.compile(r"avoid\s+police|evade\s+detection", re.I), 50),
-        ("harm_keyword", re.compile(r"bomb|weapon|malware|ransomware", re.I), 20),
+        (
+            "exploit_steps",
+            re.compile(r"(?:step|步骤)\s*\d+\s*[:：]|(?:first|second|third)\s*,", re.I),
+            45,
+        ),
+        (
+            "crime_intent",
+            re.compile(
+                r"avoid\s+police|evade\s+detection|规避.{0,6}(?:警方|侦查|追踪)|躲避.{0,6}(?:警方|执法)",
+                re.I,
+            ),
+            45,
+        ),
+        (
+            "weaponization_details",
+            re.compile(
+                r"detonator|payload|c2\s+server|phishing\s+kit|exploit\s+chain|"
+                r"引信|爆炸物原料|载荷|钓鱼工具包|攻击链",
+                re.I,
+            ),
+            40,
+        ),
+        ("harm_keyword", re.compile(r"bomb|weapon|malware|ransomware|爆炸物|武器|恶意软件|勒索软件", re.I), 25),
     ]
     for name, pattern, score in out_rules:
         if pattern.search(text or ""):

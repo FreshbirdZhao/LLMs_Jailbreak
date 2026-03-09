@@ -4,7 +4,7 @@
 
 **Goal:** Build a modular 3-layer defense system (input/interaction/output) that can be optionally enabled in `jailbreak_tools` attack workflows and stays compatible with future attack scripts.
 
-**Architecture:** Add a standalone `jailbreak_defense` package with a unified context/result protocol and composable pipeline runner. Integrate through lightweight hooks in `jailbreak_tools/single_jail.py` first, then expose reusable adapter APIs so later scripts can adopt defense with minimal changes.
+**Architecture:** Add a standalone `defense_mode` package with a unified context/result protocol and composable pipeline runner. Integrate through lightweight hooks in `jailbreak_tools/single_jail.py` first, then expose reusable adapter APIs so later scripts can adopt defense with minimal changes.
 
 **Tech Stack:** Python 3 (`dataclasses`, `enum`, `typing`, `json`, `sqlite3`, `re`), existing async workflow in `jailbreak_tools`.
 
@@ -14,7 +14,7 @@
 
 ### Option A (Recommended): Hook-based defense pipeline
 - Add `DefenseEngine` and stage hooks (`before_input`, `before_model_call`, `after_model_response`).
-- `single_jail.py` only calls hooks; defense logic remains in `jailbreak_defense`.
+- `single_jail.py` only calls hooks; defense logic remains in `defense_mode`.
 - Best compatibility for future attack scripts.
 
 ### Option B: Embed defense logic directly into `single_jail.py`
@@ -29,17 +29,17 @@
 
 ## Target Directory Structure
 
-- Create: `jailbreak_defense/__init__.py`
-- Create: `jailbreak_defense/interfaces.py`
-- Create: `jailbreak_defense/types.py`
-- Create: `jailbreak_defense/engine.py`
-- Create: `jailbreak_defense/config.py`
-- Create: `jailbreak_defense/logging_store.py`
-- Create: `jailbreak_defense/input_layer.py`
-- Create: `jailbreak_defense/interaction_layer.py`
-- Create: `jailbreak_defense/output_layer.py`
-- Create: `jailbreak_defense/rules.py`
-- Create: `jailbreak_defense/classifiers.py`
+- Create: `defense_mode/__init__.py`
+- Create: `defense_mode/interfaces.py`
+- Create: `defense_mode/types.py`
+- Create: `defense_mode/engine.py`
+- Create: `defense_mode/config.py`
+- Create: `defense_mode/logging_store.py`
+- Create: `defense_mode/input_layer.py`
+- Create: `defense_mode/interaction_layer.py`
+- Create: `defense_mode/output_layer.py`
+- Create: `defense_mode/rules.py`
+- Create: `defense_mode/classifiers.py`
 - Create: `tests/test_defense_engine.py`
 - Create: `tests/test_defense_input_layer.py`
 - Create: `tests/test_defense_interaction_layer.py`
@@ -75,9 +75,9 @@
 
 **Files:**
 - Create: `tests/test_defense_engine.py`
-- Create: `jailbreak_defense/types.py`
-- Create: `jailbreak_defense/interfaces.py`
-- Create: `jailbreak_defense/engine.py`
+- Create: `defense_mode/types.py`
+- Create: `defense_mode/interfaces.py`
+- Create: `defense_mode/engine.py`
 
 1. Write tests for deterministic stage order: input -> interaction -> output.
 2. Write tests for independent enable/disable of each module.
@@ -89,9 +89,9 @@
 ### Task 2: Input layer defense (rules + lightweight classifier stub + rewrite)
 
 **Files:**
-- Create: `jailbreak_defense/input_layer.py`
-- Create: `jailbreak_defense/rules.py`
-- Create: `jailbreak_defense/classifiers.py`
+- Create: `defense_mode/input_layer.py`
+- Create: `defense_mode/rules.py`
+- Create: `defense_mode/classifiers.py`
 - Create: `tests/test_defense_input_layer.py`
 
 1. Write failing tests for rule hits (system prompt hijack, privilege escalation, leakage bait).
@@ -104,7 +104,7 @@
 ### Task 3: Interaction layer defense (state machine + multi-turn truncation)
 
 **Files:**
-- Create: `jailbreak_defense/interaction_layer.py`
+- Create: `defense_mode/interaction_layer.py`
 - Create: `tests/test_defense_interaction_layer.py`
 
 1. Write failing tests for risk accumulation across rounds.
@@ -117,8 +117,8 @@
 ### Task 4: Output layer defense (detect/filter/replace/archive)
 
 **Files:**
-- Create: `jailbreak_defense/output_layer.py`
-- Create: `jailbreak_defense/logging_store.py`
+- Create: `defense_mode/output_layer.py`
+- Create: `defense_mode/logging_store.py`
 - Create: `tests/test_defense_output_layer.py`
 
 1. Write failing tests for output risk detection and keyword/structure policy hits.
@@ -135,8 +135,8 @@
 
 **Files:**
 - Modify: `jailbreak_tools/single_jail.py`
-- Create: `jailbreak_defense/config.py`
-- Modify/Create: `jailbreak_defense/__init__.py`
+- Create: `defense_mode/config.py`
+- Modify/Create: `defense_mode/__init__.py`
 - Extend tests: `tests/test_jailbreak_cli_smoke.py` or create `tests/test_single_jail_defense_integration.py`
 
 1. Add CLI options:
@@ -154,8 +154,8 @@
 ### Task 6: Compatibility adapter for future attack scripts
 
 **Files:**
-- Modify: `jailbreak_defense/engine.py`
-- Create: `jailbreak_defense/interfaces.py` (adapter protocol section)
+- Modify: `defense_mode/engine.py`
+- Create: `defense_mode/interfaces.py` (adapter protocol section)
 - Create: `docs/plans/2026-03-07-defense-integration-guide.md`
 
 1. Define script-agnostic adapter API:

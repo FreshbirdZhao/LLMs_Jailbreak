@@ -23,7 +23,7 @@ class TestSingleJailEntrypoint(unittest.TestCase):
             0,
             msg=f"stdout:\n{proc.stdout}\n\nstderr:\n{proc.stderr}",
         )
-        self.assertNotIn("No module named 'Defense.jailbreak_defense'", proc.stderr)
+        self.assertNotIn("No module named 'Defense.defense_mode'", proc.stderr)
 
 
 if __name__ == "__main__":

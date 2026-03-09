@@ -1,10 +1,19 @@
 from __future__ import annotations
 
-from Defense.jailbreak_defense.interfaces import DefenseModule
-from Defense.jailbreak_defense.types import DefenseAction, DefenseContext, DefenseDecision
+from Defense.defense_mode.interfaces import DefenseModule
+from Defense.defense_mode.types import DefenseAction, DefenseContext, DefenseDecision
 
 
 class DefenseEngine:
+    _ACTION_PRIORITY: dict[DefenseAction, int] = {
+        DefenseAction.ALLOW: 0,
+        DefenseAction.REWRITE: 1,
+        DefenseAction.REDACT: 2,
+        DefenseAction.TRUNCATE: 3,
+        DefenseAction.REPLACE: 4,
+        DefenseAction.BLOCK: 5,
+    }
+
     def __init__(
         self,
         input_module: DefenseModule | None,
@@ -36,13 +45,25 @@ class DefenseEngine:
             }
         )
 
+    def _pick_stronger(self, current: DefenseDecision, candidate: DefenseDecision) -> DefenseDecision:
+        if candidate.risk_level > current.risk_level:
+            return candidate
+        if candidate.risk_level < current.risk_level:
+            return current
+
+        current_priority = self._ACTION_PRIORITY.get(current.action, 0)
+        candidate_priority = self._ACTION_PRIORITY.get(candidate.action, 0)
+        if candidate_priority > current_priority:
+            return candidate
+        return current
+
     def apply_pre_call_defense(self, context: DefenseContext) -> DefenseDecision:
         final = DefenseDecision(action=DefenseAction.ALLOW, risk_level=0)
 
         if self.input_module is not None:
             d = self.input_module.process(context)
             self._record(context, "input", d)
-            final = d
+            final = self._pick_stronger(final, d)
             if d.action == DefenseAction.BLOCK:
                 context.model_call_allowed = False
                 return d
@@ -52,7 +73,7 @@ class DefenseEngine:
         if self.interaction_module is not None:
             d = self.interaction_module.process(context)
             self._record(context, "interaction_pre", d)
-            final = d
+            final = self._pick_stronger(final, d)
             if d.action in {DefenseAction.BLOCK, DefenseAction.TRUNCATE}:
                 context.model_call_allowed = False
                 return d
@@ -66,15 +87,13 @@ class DefenseEngine:
         if self.output_module is not None:
             d = self.output_module.process(context)
             self._record(context, "output", d)
-            final = d
+            final = self._pick_stronger(final, d)
             if d.rewritten_text:
                 context.sanitized_response = d.rewritten_text
 
         if self.interaction_module is not None:
             d = self.interaction_module.process(context)
             self._record(context, "interaction_post", d)
-            if d.risk_level > final.risk_level:
-                final = d
+            final = self._pick_stronger(final, d)
 
         return final
-

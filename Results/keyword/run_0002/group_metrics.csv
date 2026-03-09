@@ -1,0 +1,3 @@
+source_file,total,yes_count,uncertain_count,success_rate,success_variance,ci95_low,ci95_high,risk_0_ratio,risk_1_ratio,risk_2_ratio,risk_3_ratio,risk_4_ratio
+defense_input_layer:input_layer/qwen2_latest_jailbench_partial_single_0308.jsonl,200,27,159,0.135,0.116775,0.09446570454787906,0.18929138370752552,0.07,0.79,0.0,0.005,0.135
+jailbreak:qwen2_latest_jailbench_partial_single_0305.jsonl,200,46,145,0.23,0.1771,0.17709343259068805,0.2930830436530359,0.045,0.715,0.0,0.01,0.23

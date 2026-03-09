@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import unittest
 
-from Defense.jailbreak_defense.input import InputDefenseModule
-from Defense.jailbreak_defense.types import DefenseAction, DefenseContext
+from Defense.defense_mode.input import InputDefenseModule
+from Defense.defense_mode.types import DefenseAction, DefenseContext
 
 
 class TestInputDefenseModule(unittest.TestCase):

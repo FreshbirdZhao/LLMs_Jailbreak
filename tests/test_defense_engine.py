@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import unittest
 
-from Defense.jailbreak_defense.engine import DefenseEngine
-from Defense.jailbreak_defense.types import DefenseAction, DefenseDecision
+from Defense.defense_mode.engine import DefenseEngine
+from Defense.defense_mode.types import DefenseAction, DefenseDecision
 
 
 class _StubModule:
@@ -68,6 +68,20 @@ class TestDefenseEngine(unittest.TestCase):
         decision = engine.apply_post_call_defense(ctx, "dangerous response")
         self.assertEqual(decision.action, DefenseAction.REPLACE)
         self.assertEqual(ctx.sanitized_response, "refused")
+
+    def test_post_call_prefers_stronger_action_on_same_risk(self) -> None:
+        engine = DefenseEngine(
+            input_module=None,
+            interaction_module=_StubModule(DefenseAction.BLOCK, risk=3),
+            output_module=_StubModule(DefenseAction.REPLACE, risk=3, rewrite="refused"),
+        )
+        ctx = engine.build_context_from_case(
+            case={"id": "jb_4", "prompt": "x", "attack_type": "direct", "category": "harmful"},
+            model_name="qwen2",
+            round_idx=1,
+        )
+        decision = engine.apply_post_call_defense(ctx, "dangerous response")
+        self.assertEqual(decision.action, DefenseAction.BLOCK)
 
 
 if __name__ == "__main__":

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from Defense.jailbreak_defense.classifiers import KeywordRiskClassifier
-from Defense.jailbreak_defense.rules import detect_prompt_injection
-from Defense.jailbreak_defense.types import DefenseAction, DefenseContext, DefenseDecision
+from Defense.defense_mode.classifiers import KeywordRiskClassifier
+from Defense.defense_mode.rules import detect_prompt_injection
+from Defense.defense_mode.types import DefenseAction, DefenseContext, DefenseDecision
 
 
 class InputDefenseModule:
