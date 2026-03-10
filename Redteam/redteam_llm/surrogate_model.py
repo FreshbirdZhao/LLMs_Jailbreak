@@ -24,6 +24,7 @@ _project_root = str(Path(__file__).resolve().parents[2])
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
+from model_registry import resolve_model
 from Jailbreak.jailbreak_tools.loader import Loader
 
 try:
@@ -536,12 +537,7 @@ def main():
             p = Path(_project_root) / models_yaml_path
         if not p.exists():
             return None
-        cfg = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
-        all_models = (cfg.get("local") or []) + (cfg.get("commercial") or [])
-        for m in all_models:
-            if m.get("name") == model_name:
-                return m
-        return None
+        return resolve_model(p, model_name)
 
     model_cfg = _resolve_model_from_yaml(args.models_config, args.model)
     if not model_cfg:
@@ -558,14 +554,7 @@ def main():
         return
 
     if model_type != "ollama":
-        key_path = Path(_project_root) / "config" / "api_keys.yaml"
-        if key_path.exists():
-            with open(key_path, "r", encoding="utf-8") as f:
-                api_keys = yaml.safe_load(f) or {}
-            if args.model in api_keys:
-                args.api_key = api_keys[args.model].get("api_key")
-            elif "api_key" in model_cfg:
-                args.api_key = model_cfg.get("api_key")
+        args.api_key = model_cfg.get("api_key") or args.api_key
     elif "api_key" in model_cfg:
         args.api_key = model_cfg.get("api_key")
 

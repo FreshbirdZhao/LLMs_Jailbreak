@@ -1,0 +1,4 @@
+source_file,total,yes_count,uncertain_count,success_rate,success_variance,ci95_low,ci95_high,risk_0_ratio,risk_1_ratio,risk_2_ratio,risk_3_ratio,risk_4_ratio
+"deepseek-chat_jailbench_partial_single.jsonl
+(defense)_all",200,7,15,0.035,0.033775,0.017055542008567192,0.07047061152229073,0.12,0.67,0.065,0.07,0.075
+deepseek-r1_1.5b_jailbench_partial_single.jsonl,200,1,14,0.005,0.004975,0.0008831687156009814,0.02777370439789293,0.0,0.925,0.015,0.0,0.06

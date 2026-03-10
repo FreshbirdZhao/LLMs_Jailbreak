@@ -26,6 +26,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from model_registry import resolve_model
 from Defense.defense_mode import (
     DefenseAction,
     DefenseEngine,
@@ -113,6 +114,7 @@ class ModelTester:
         defense_config_path: str | None = None,
         defense_archive_format: str = "jsonl",
     ):
+        self.models_config_path = models_config_path
         self.models_config = self._load_models_config(models_config_path)
 
         # ---------------------------
@@ -224,29 +226,20 @@ class ModelTester:
     # 选择用户指定模型
     # ---------------------------
     def _get_models(self, names: List[str]) -> List[Dict]:
-        all_models = self.models_config.get("local", []) + self.models_config.get("commercial", [])
-
-        # 加载 API KEY（仅商用模型使用）
-        key_path = Path("config/api_keys.yaml")
-        api_keys = {}
-        if key_path.exists():
-            with open(key_path, "r", encoding="utf-8") as f:
-                api_keys = yaml.safe_load(f)
-
         chosen = []
-        for m in all_models:
-            if m["name"] not in names:
+        for name in names:
+            m = resolve_model(self.models_config_path, name)
+            if not m:
+                print(f"⚠ 模型 {name} 未在 models.yaml 中找到，跳过")
                 continue
-
             if not m.get("model") or not m.get("base_url") or not m.get("type"):
                 print(f"⚠ 模型 {m.get('name', '<unknown>')} 配置不完整（需包含 type/model/base_url），跳过")
                 continue
 
             if m.get("type") != "ollama":
-                if m["name"] not in api_keys:
+                if not str(m.get("api_key") or "").strip():
                     print(f"⚠ 模型 {m['name']} 缺少 API KEY，跳过")
                     continue
-                m["api_key"] = api_keys[m["name"]]["api_key"]
 
             chosen.append(m)
 
@@ -345,6 +338,22 @@ class ModelTester:
     def _write_jsonl(self, record: dict):
         self._jsonl_fp.write(json.dumps(record, ensure_ascii=False) + "\n")
         self._jsonl_fp.flush()
+
+    def _cleanup_empty_output_file(self):
+        if self._jsonl_fp:
+            try:
+                self._jsonl_fp.close()
+            except Exception:
+                pass
+            self._jsonl_fp = None
+        if not self.output_jsonl:
+            return
+        path = Path(self.output_jsonl)
+        if path.exists() and path.stat().st_size == 0:
+            try:
+                path.unlink()
+            except Exception:
+                pass
 
     # ---------------------------
     # 定时保存（强制落盘）
@@ -601,7 +610,8 @@ class ModelTester:
         for m in models:
             ok = await self._check_model(m)
             if not ok:
-                return
+                self._cleanup_empty_output_file()
+                return 1
         await self._safe_print("", redraw_progress=False)
 
         # 组装任务：跳过已完成的 (model_name, test_id)
@@ -652,6 +662,7 @@ class ModelTester:
             await self._safe_print(f"\n\n{Colors.bold('📊 测试完成统计：')}", redraw_progress=False)
             await self._safe_print(f"  {Colors.error('✗最终失败(丢弃不保存)')}: {self.error_count}", redraw_progress=False)
             await self._safe_print(f"  {Colors.success('✓完成(已保存)')}: {self.total_tests - self.error_count}", redraw_progress=False)
+            return 0
 
         finally:
             # 停止 autosave
@@ -696,8 +707,7 @@ class ModelTester:
         else:
             dataset_name = Path(dataset_path).stem.lower().replace(" ", "_")
 
-        date_short = datetime.now().strftime("%m%d")
-        filename = f"{safe_models}_{dataset_name}_{scale}_single_{date_short}.jsonl"
+        filename = f"{safe_models}_{dataset_name}_{scale}_single.jsonl"
         self.output_jsonl = Path(out_dir) / filename
 
         note = "（仅成功响应会写入；失败会异步退避重试；支持断点续跑）"
@@ -752,8 +762,8 @@ async def main():
     )
     tester.setup_output(args.output_dir, args.models, args.dataset, args.scale, args.dataset_name_for_output)
 
-    await tester.run_tests(args.models, args.dataset)
+    return await tester.run_tests(args.models, args.dataset)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    raise SystemExit(asyncio.run(main()))

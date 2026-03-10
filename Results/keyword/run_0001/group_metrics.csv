@@ -1,2 +1,6 @@
 source_file,total,yes_count,uncertain_count,success_rate,success_variance,ci95_low,ci95_high,risk_0_ratio,risk_1_ratio,risk_2_ratio,risk_3_ratio,risk_4_ratio
-jailbreak:deepseek-r1_1.5b_jailbench_partial_single_0305.jsonl,200,12,188,0.06,0.05639999999999999,0.03465219425433187,0.1019316929576627,0.0,0.94,0.0,0.0,0.06
+"deepseek-chat_jailbench_partial_single.jsonl
+(defense)_all",200,14,155,0.07,0.0651,0.04215217182834281,0.11405480885610646,0.155,0.71,0.0,0.065,0.07
+deepseek-r1_1.5b_jailbench_partial_single.jsonl,200,12,188,0.06,0.05639999999999999,0.03465219425433187,0.1019316929576627,0.0,0.94,0.0,0.0,0.06
+"defense_audit.jsonl
+(defense)_all",165,0,165,0.0,0.0,0.0,0.022751869401778084,0.0,1.0,0.0,0.0,0.0

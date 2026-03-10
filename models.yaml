@@ -28,8 +28,17 @@ local:
 
 
 commercial:
-  # 商业模型默认不启用，需要通过 api_keys.yaml 提供密钥
-  - name: gpt-4o-mini
+  # 商业模型默认启用；只有在对应环境变量存在时才会出现在交互菜单中
+  - name: deepseek-chat
     type: openai_compatible
-    base_url: https://api.openai.com/v1 # 或者你的代理地址
-    model: gpt-4o-mini
+    provider: external
+    base_url: https://api.deepseek.com
+    model: deepseek-chat
+    api_key_env: DEEPSEEK_API_KEY
+
+  - name: deepseek-reasoner
+    type: openai_compatible
+    provider: external
+    base_url: https://api.deepseek.com
+    model: deepseek-reasoner
+    api_key_env: DEEPSEEK_API_KEY

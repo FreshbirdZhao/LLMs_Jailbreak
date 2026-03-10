@@ -27,6 +27,36 @@ DEFAULT_OUTPUT_ROOT = PROJECT_ROOT / "Results"
 DEFAULT_SOURCE_ROOT = PROJECT_ROOT / "Results" / "directory"
 
 
+def _strip_jsonl_suffix(name: str) -> str:
+    return name[:-6] if name.endswith(".jsonl") else name
+
+
+def _normalize_source_label(label: str, source_path: str) -> str:
+    raw_label = str(label or "").strip()
+    raw_path = Path(str(source_path or "").strip())
+    dataset_name = raw_path.name or raw_label
+
+    if "Jailbreak/jailbreak_results" in raw_path.as_posix():
+        cleaned = dataset_name
+        if cleaned.startswith("jailbreak_"):
+            cleaned = cleaned[len("jailbreak_") :]
+        return cleaned or _strip_jsonl_suffix(raw_label.split(":", 1)[-1])
+
+    if "Defense/defense_results" in raw_path.as_posix():
+        mode_dir = raw_path.parent.name
+        mode = mode_dir[:-6] if mode_dir.endswith("_layer") else mode_dir
+        if mode == "all_layers":
+            mode = "all"
+        cleaned = dataset_name
+        prefix = f"{mode_dir}/"
+        label_body = raw_label.split(":", 1)[-1]
+        if label_body.startswith(prefix):
+            cleaned = label_body[len(prefix) :]
+        return f"{cleaned}\n(defense)_{mode}"
+
+    return raw_label
+
+
 def _build_base_judge(args):
     mode = args.judge_mode
     keyword = KeywordJudge()
@@ -201,8 +231,8 @@ def _load_source_alias_map(source_manifest_file: str) -> dict[str, str]:
             parts = line.split("\t")
             if len(parts) != 3:
                 continue
-            label, _, copied_filename = parts
-            source_alias_map[copied_filename] = label
+            label, source_path, copied_filename = parts
+            source_alias_map[copied_filename] = _normalize_source_label(label, source_path)
     return source_alias_map
 
 

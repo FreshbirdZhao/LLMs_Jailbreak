@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import math
 import os
 import warnings
 from pathlib import Path
@@ -125,6 +126,79 @@ def _group_label_df(group_df: pd.DataFrame) -> pd.DataFrame:
     return work
 
 
+def _build_plot_label_df(group_df: pd.DataFrame) -> pd.DataFrame:
+    work = _group_label_df(group_df)
+    full_labels = work["group_label"].astype(str).tolist()
+    short_labels = [f"D{i + 1}" for i in range(len(full_labels))]
+    work["full_label"] = full_labels
+    work["group_label"] = short_labels
+    work["label_legend"] = [f"{short} | {full}" for short, full in zip(short_labels, full_labels)]
+    return work
+
+
+def _mapping_table_height(num_rows: int) -> float:
+    if num_rows <= 0:
+        return 0.0
+    num_cols = max(1, math.ceil(num_rows / 8))
+    rows_per_col = math.ceil(num_rows / num_cols)
+    return max(1.2, 0.32 * (rows_per_col + 1))
+
+
+def _build_mapping_table_data(legend_rows: list[tuple[str, str]]) -> tuple[list[str], list[list[str]]]:
+    if not legend_rows:
+        return (["ID", "Full Name"], [])
+
+    num_cols = max(1, math.ceil(len(legend_rows) / 8))
+    rows_per_col = math.ceil(len(legend_rows) / num_cols)
+    headers: list[str] = []
+    for _ in range(num_cols):
+        headers.extend(["ID", "Full Name"])
+
+    cell_rows: list[list[str]] = []
+    for row_idx in range(rows_per_col):
+        row_cells: list[str] = []
+        for col_idx in range(num_cols):
+            item_idx = col_idx * rows_per_col + row_idx
+            if item_idx < len(legend_rows):
+                row_cells.extend(list(legend_rows[item_idx]))
+            else:
+                row_cells.extend(["", ""])
+        cell_rows.append(row_cells)
+    return headers, cell_rows
+
+
+def _attach_mapping_table(fig: object, legend_rows: list[tuple[str, str]]) -> None:
+    if not legend_rows:
+        return
+
+    num_cols = max(1, math.ceil(len(legend_rows) / 8))
+    ax = fig.add_axes([0.08, 0.02, 0.84, 0.18])
+    ax.axis("off")
+
+    col_labels, cell_rows = _build_mapping_table_data(legend_rows)
+    table = ax.table(cellText=cell_rows, colLabels=col_labels, loc="center", cellLoc="left", colLoc="left")
+    table.auto_set_font_size(False)
+    table.set_fontsize(7.5)
+    table.scale(1, 1.15)
+    for (row, _col), cell in table.get_celld().items():
+        cell.set_linewidth(0.0)
+        cell.set_edgecolor("#FFFFFF")
+        if row == 0:
+            cell.set_text_props(weight="bold")
+            cell.set_facecolor("#F2F4F7")
+        else:
+            cell.set_facecolor("#FFFFFF")
+
+
+def _figure_with_table(plt: object, width: float, main_height: float, num_labels: int) -> tuple[object, object]:
+    table_height = _mapping_table_height(num_labels)
+    fig = plt.figure(figsize=(width, main_height + table_height))
+    main_bottom = (table_height + 0.45) / (main_height + table_height)
+    main_top = 1 - (0.35 / (main_height + table_height))
+    ax = fig.add_axes([0.10, main_bottom, 0.78, max(0.35, main_top - main_bottom)])
+    return fig, ax
+
+
 def plot_success_rate(group_df: pd.DataFrame, output_dir: str | Path) -> Path:
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -146,13 +220,13 @@ def plot_success_rate(group_df: pd.DataFrame, output_dir: str | Path) -> Path:
         plt.close()
         return fig_path
 
-    work = _group_label_df(group_df).sort_values(
+    work = _build_plot_label_df(group_df).sort_values(
         by=["success_rate", "total"], ascending=[False, False]
     ).reset_index(drop=True)
     y = pd.to_numeric(work["success_rate"], errors="coerce").fillna(0.0)
     lows = (y - pd.to_numeric(work["ci95_low"], errors="coerce").fillna(0.0)).clip(lower=0.0)
     highs = (pd.to_numeric(work["ci95_high"], errors="coerce").fillna(0.0) - y).clip(lower=0.0)
-    fig, ax = plt.subplots(figsize=(10, max(4.5, 0.55 * len(work) + 1.5)))
+    fig, ax = _figure_with_table(plt, 10, max(4.5, 0.55 * len(work) + 1.5), len(work))
     color = "#336699"
     if sns is not None:
         sns.barplot(data=work, x="success_rate", y="group_label", ax=ax, color=color, orient="h")
@@ -169,7 +243,7 @@ def plot_success_rate(group_df: pd.DataFrame, output_dir: str | Path) -> Path:
         text = f"p={row['success_rate']:.2f}, {yes_count}/{total}"
         x = min(1.04, float(row["success_rate"]) + 0.02)
         ax.text(x, idx, text, va="center", fontsize=8, ha="left", clip_on=False)
-    fig.tight_layout()
+    _attach_mapping_table(fig, list(zip(work["group_label"].tolist(), work["full_label"].tolist())))
     fig.savefig(fig_path, bbox_inches="tight")
     plt.close()
     return fig_path
@@ -196,10 +270,10 @@ def plot_risk_distribution(group_df: pd.DataFrame, output_dir: str | Path) -> Pa
         plt.close()
         return fig_path
 
-    work = _group_label_df(group_df).sort_values(by=["risk_4_ratio", "risk_3_ratio"], ascending=[False, False]).reset_index(
+    work = _build_plot_label_df(group_df).sort_values(by=["risk_4_ratio", "risk_3_ratio"], ascending=[False, False]).reset_index(
         drop=True
     )
-    fig, ax = plt.subplots(figsize=(11, max(4.5, 0.65 * len(work) + 1.5)))
+    fig, ax = _figure_with_table(plt, 11, max(4.5, 0.65 * len(work) + 1.5), len(work))
     x_labels = work["group_label"].tolist()
     bottom = [0.0] * len(work)
     colors = ["#C9D6DF", "#8DB3C7", "#5D89A8", "#D98989", "#B14848"]
@@ -217,7 +291,7 @@ def plot_risk_distribution(group_df: pd.DataFrame, output_dir: str | Path) -> Pa
     for idx, total in enumerate(pd.to_numeric(work["total"], errors="coerce").fillna(0).astype(int).tolist()):
         ax.text(idx, 1.03, f"n={total}", ha="center", va="bottom", fontsize=8)
     ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.02), frameon=False, title="Risk Level")
-    fig.tight_layout()
+    _attach_mapping_table(fig, list(zip(work["group_label"].tolist(), work["full_label"].tolist())))
     fig.savefig(fig_path, bbox_inches="tight")
     plt.close()
     return fig_path
@@ -244,10 +318,10 @@ def plot_uncertainty_overview(group_df: pd.DataFrame, output_dir: str | Path) ->
         plt.close()
         return fig_path
 
-    work = _group_label_df(group_df).sort_values(
+    work = _build_plot_label_df(group_df).sort_values(
         by=["uncertain_rate", "total"], ascending=[False, False]
     ).reset_index(drop=True)
-    fig, ax1 = plt.subplots(figsize=(11, max(4.5, 0.6 * len(work) + 1.5)))
+    fig, ax1 = _figure_with_table(plt, 11, max(4.5, 0.6 * len(work) + 1.5), len(work))
     x = list(range(len(work)))
     uncertain_rate = pd.to_numeric(work["uncertain_rate"], errors="coerce").fillna(0.0)
     totals = pd.to_numeric(work["total"], errors="coerce").fillna(0.0)
@@ -277,7 +351,7 @@ def plot_uncertainty_overview(group_df: pd.DataFrame, output_dir: str | Path) ->
             va="bottom",
             fontsize=8,
         )
-    fig.tight_layout()
+    _attach_mapping_table(fig, list(zip(work["group_label"].tolist(), work["full_label"].tolist())))
     fig.savefig(fig_path, bbox_inches="tight")
     plt.close()
     return fig_path
@@ -304,13 +378,13 @@ def plot_risk_heatmap(group_df: pd.DataFrame, output_dir: str | Path) -> Path:
         plt.close()
         return fig_path
 
-    work = _group_label_df(group_df).sort_values(by=["risk_4_ratio", "risk_3_ratio"], ascending=[False, False]).reset_index(
+    work = _build_plot_label_df(group_df).sort_values(by=["risk_4_ratio", "risk_3_ratio"], ascending=[False, False]).reset_index(
         drop=True
     )
     heat = work[[f"risk_{i}_ratio" for i in range(5)]].copy()
     heat.index = work["group_label"]
     fig_h = max(4.5, len(heat) * 0.6 + 1.5)
-    fig, ax = plt.subplots(figsize=(10, fig_h))
+    fig, ax = _figure_with_table(plt, 10, fig_h, len(work))
     if sns is not None:
         sns.heatmap(
             heat,
@@ -338,7 +412,7 @@ def plot_risk_heatmap(group_df: pd.DataFrame, output_dir: str | Path) -> Path:
     ax.set_title("Risk Ratio Heatmap by Source File")
     ax.set_xlabel("Risk Level")
     ax.set_ylabel("Source File")
-    fig.tight_layout()
+    _attach_mapping_table(fig, list(zip(work["group_label"].tolist(), work["full_label"].tolist())))
     fig.savefig(fig_path, bbox_inches="tight")
     plt.close()
     return fig_path
