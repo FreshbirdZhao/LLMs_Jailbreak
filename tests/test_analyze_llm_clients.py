@@ -48,5 +48,12 @@ class BuildClientTest(unittest.TestCase):
         self.assertEqual(client.retry_backoff, 2.5)
 
 
+class AnalyzeBuilderIntegrationTest(unittest.TestCase):
+    def test_build_llm_client_accepts_sparse_input_and_normalizes_it(self):
+        client = build_llm_client({"provider": "ollama", "model": "qwen2:latest"})
+        self.assertEqual(client.provider_name, "ollama")
+        self.assertEqual(client.base_url, "http://127.0.0.1:11434")
+
+
 if __name__ == "__main__":
     unittest.main()

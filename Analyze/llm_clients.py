@@ -13,6 +13,7 @@ from typing import Any
 from urllib import error, request
 from urllib.parse import urlparse
 
+from common.llm.config import normalize_provider_config
 from common.runtime import RetryPolicy
 
 
@@ -194,13 +195,24 @@ class ExternalAPIClient(BaseLLMClient):
 
 
 def build_llm_client(config: dict[str, Any]) -> BaseLLMClient:
-    provider = str(config.get("provider", "ollama")).lower()
-    model = str(config.get("model", "qwen2:latest"))
-    base_url = str(config.get("base_url", "")).strip()
+    normalized = normalize_provider_config(
+        {
+            "provider": config.get("provider", "ollama"),
+            "model": config.get("model", "qwen2:latest"),
+            "base_url": config.get("base_url", ""),
+            "api_key": config.get("api_key", ""),
+            "timeout": config.get("timeout", 30),
+            "max_retries": config.get("max_retries", 2),
+            "retry_backoff": config.get("retry_backoff", 1.0),
+        }
+    )
+    provider = normalized["provider"]
+    model = normalized["model"]
+    base_url = normalized["base_url"]
     policy = RetryPolicy(
-        timeout=int(config.get("timeout", 30)),
-        max_retries=int(config.get("max_retries", 2)),
-        retry_backoff=float(config.get("retry_backoff", 1.0)),
+        timeout=normalized["timeout"],
+        max_retries=normalized["max_retries"],
+        retry_backoff=normalized["retry_backoff"],
     )
     timeout = policy.timeout
 
@@ -215,7 +227,7 @@ def build_llm_client(config: dict[str, Any]) -> BaseLLMClient:
     if provider == "external":
         return ExternalAPIClient(
             model=model,
-            api_key=str(config.get("api_key", "")),
+            api_key=normalized["api_key"],
             base_url=base_url or "https://api.openai.com/v1",
             timeout=timeout,
             max_retries=policy.max_retries,
