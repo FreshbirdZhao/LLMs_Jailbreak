@@ -26,6 +26,7 @@ if _project_root not in sys.path:
 
 from model_registry import resolve_model
 from Jailbreak.jailbreak_tools.loader import Loader
+from common.llm.config import normalize_provider_config
 
 try:
     from Redteam.redteam_llm.clients import ClientConfig, OllamaClient, OpenAICompatClient
@@ -543,22 +544,31 @@ def main():
     if not model_cfg:
         print(f"❌ 错误：在 {args.models_config} 中未找到模型 `{args.model}`")
         return
+    provider_cfg = normalize_provider_config(
+        {
+            "provider": model_cfg.get("provider") or model_cfg.get("type") or "ollama",
+            "model": model_cfg.get("model", args.model),
+            "base_url": model_cfg.get("base_url", ""),
+            "api_key": model_cfg.get("api_key") or args.api_key or "",
+            "timeout": model_cfg.get("timeout", 60),
+        }
+    )
 
     model_type = str(model_cfg.get("type") or "ollama")
     if model_type == "openai":
         model_type = "openai_compatible"
 
-    base_url = str(model_cfg.get("base_url") or "").strip()
+    base_url = provider_cfg["base_url"]
     if not base_url:
         print(f"❌ 错误：模型 `{args.model}` 缺少 base_url 配置，请在 models.yaml 中补充")
         return
 
     if model_type != "ollama":
-        args.api_key = model_cfg.get("api_key") or args.api_key
+        args.api_key = provider_cfg["api_key"] or args.api_key
     elif "api_key" in model_cfg:
-        args.api_key = model_cfg.get("api_key")
+        args.api_key = provider_cfg["api_key"]
 
-    actual_model = model_cfg.get("model", args.model)
+    actual_model = provider_cfg["model"] or args.model
 
     cfg = SurrogateConfig(
         model_name=args.model,

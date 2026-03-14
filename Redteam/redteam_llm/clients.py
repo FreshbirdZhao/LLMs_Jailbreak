@@ -11,6 +11,8 @@ import subprocess
 
 import httpx
 
+from common.runtime import RetryPolicy
+
 
 @dataclass
 class ClientConfig:
@@ -21,6 +23,10 @@ class ClientConfig:
     max_tokens: int = 2000
     timeout_s: float = 60.0
     auto_pull: bool = True
+
+    def __post_init__(self) -> None:
+        policy = RetryPolicy(timeout=self.timeout_s, max_retries=0, retry_backoff=0.0)
+        self.timeout_s = float(policy.timeout)
 
 
 class BaseClient:
