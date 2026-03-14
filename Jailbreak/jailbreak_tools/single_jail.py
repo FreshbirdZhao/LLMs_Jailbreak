@@ -27,6 +27,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from model_registry import resolve_model
+from common.runtime import RetryPolicy
 from Defense.defense_mode import (
     DefenseAction,
     DefenseEngine,
@@ -116,6 +117,13 @@ class ModelTester:
     ):
         self.models_config_path = models_config_path
         self.models_config = self._load_models_config(models_config_path)
+        runtime_policy = RetryPolicy(timeout=timeout, max_retries=retry_limit, retry_backoff=retry_backoff_base)
+        timeout = runtime_policy.timeout
+        retry_limit = runtime_policy.max_retries
+        retry_backoff_base = runtime_policy.retry_backoff
+        retry_backoff_cap = max(retry_backoff_base, float(retry_backoff_cap))
+        concurrency = max(1, int(concurrency))
+        autosave_interval = max(0, int(autosave_interval))
 
         # ---------------------------
         # httpx 连接池限制（高并发更稳定）
