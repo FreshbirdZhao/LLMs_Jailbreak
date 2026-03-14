@@ -13,12 +13,25 @@ from typing import Any
 from urllib import error, request
 from urllib.parse import urlparse
 
+from common.runtime import RetryPolicy
+
 
 class BaseLLMClient:
     provider_name: str = "base"
 
     def complete(self, prompt: str) -> str:
         raise NotImplementedError
+
+
+def _is_transient_error(exc: Exception) -> bool:
+    if isinstance(exc, (TimeoutError, socket.timeout)):
+        return True
+    if isinstance(exc, error.URLError):
+        return True
+    if isinstance(exc, OSError):
+        message = str(exc).lower()
+        return any(token in message for token in ["timed out", "refused", "reset", "unreachable"])
+    return False
 
 
 @dataclass
@@ -94,17 +107,6 @@ class OllamaClient(BaseLLMClient):
             self._log_file.close()
             self._log_file = None
 
-    @staticmethod
-    def _is_transient_error(exc: Exception) -> bool:
-        if isinstance(exc, (TimeoutError, socket.timeout)):
-            return True
-        if isinstance(exc, error.URLError):
-            return True
-        if isinstance(exc, OSError):
-            message = str(exc).lower()
-            return any(token in message for token in ["timed out", "refused", "reset", "unreachable"])
-        return False
-
     def complete(self, prompt: str) -> str:
         body = json.dumps(
             {
@@ -127,7 +129,7 @@ class OllamaClient(BaseLLMClient):
                     payload = json.loads(resp.read().decode("utf-8"))
                 return str(payload.get("response", ""))
             except Exception as exc:
-                if attempt >= self.max_retries or not self._is_transient_error(exc):
+                if attempt >= self.max_retries or not _is_transient_error(exc):
                     raise
                 self._recover_service()
                 if self.retry_backoff > 0:
@@ -142,8 +144,20 @@ class ExternalAPIClient(BaseLLMClient):
     api_key: str = ""
     base_url: str = "https://api.openai.com/v1"
     timeout: int = 30
+    max_retries: int = 0
+    retry_backoff: float = 0.0
 
     provider_name: str = "external"
+
+    def __post_init__(self) -> None:
+        policy = RetryPolicy(
+            timeout=self.timeout,
+            max_retries=self.max_retries,
+            retry_backoff=self.retry_backoff,
+        )
+        self.timeout = policy.timeout
+        self.max_retries = policy.max_retries
+        self.retry_backoff = policy.retry_backoff
 
     def complete(self, prompt: str) -> str:
         body = json.dumps(
@@ -162,28 +176,41 @@ class ExternalAPIClient(BaseLLMClient):
             headers=headers,
             method="POST",
         )
-        with request.urlopen(req, timeout=self.timeout) as resp:
-            payload = json.loads(resp.read().decode("utf-8"))
-        choices = payload.get("choices") or []
-        if not choices:
-            return ""
-        msg = choices[0].get("message", {})
-        return str(msg.get("content", ""))
+        for attempt in range(self.max_retries + 1):
+            try:
+                with request.urlopen(req, timeout=self.timeout) as resp:
+                    payload = json.loads(resp.read().decode("utf-8"))
+                choices = payload.get("choices") or []
+                if not choices:
+                    return ""
+                msg = choices[0].get("message", {})
+                return str(msg.get("content", ""))
+            except Exception as exc:
+                if attempt >= self.max_retries or not _is_transient_error(exc):
+                    raise
+                if self.retry_backoff > 0:
+                    time.sleep(self.retry_backoff * (attempt + 1))
+        raise RuntimeError("External API request failed after retries")
 
 
 def build_llm_client(config: dict[str, Any]) -> BaseLLMClient:
     provider = str(config.get("provider", "ollama")).lower()
     model = str(config.get("model", "qwen2:latest"))
     base_url = str(config.get("base_url", "")).strip()
-    timeout = int(config.get("timeout", 30))
+    policy = RetryPolicy(
+        timeout=int(config.get("timeout", 30)),
+        max_retries=int(config.get("max_retries", 2)),
+        retry_backoff=float(config.get("retry_backoff", 1.0)),
+    )
+    timeout = policy.timeout
 
     if provider == "ollama":
         return OllamaClient(
             model=model,
             base_url=base_url or "http://127.0.0.1:11434",
             timeout=timeout,
-            max_retries=int(config.get("max_retries", 2)),
-            retry_backoff=float(config.get("retry_backoff", 1.0)),
+            max_retries=policy.max_retries,
+            retry_backoff=policy.retry_backoff,
         )
     if provider == "external":
         return ExternalAPIClient(
@@ -191,5 +218,7 @@ def build_llm_client(config: dict[str, Any]) -> BaseLLMClient:
             api_key=str(config.get("api_key", "")),
             base_url=base_url or "https://api.openai.com/v1",
             timeout=timeout,
+            max_retries=policy.max_retries,
+            retry_backoff=policy.retry_backoff,
         )
     raise ValueError(f"Unsupported provider: {provider}")
