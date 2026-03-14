@@ -64,8 +64,8 @@
 主要入口：
 
 - 交互式入口：`Jelly_Z/bin/jailbreak`
-- 单步脚本：`Jailbreak/jailbreak_tools/single_jail.py`
-- 多步脚本：`Jailbreak/jailbreak_tools/multi.py`
+- 单数据集多轮脚本：`Jailbreak/jailbreak_tools/single_jail/single_jail.py`
+- 多数据集多轮脚本：`Jailbreak/jailbreak_tools/multi_jail/multi_jail.py`
 
 #### `Defense/`
 
@@ -323,26 +323,23 @@ python Redteam/redteam_llm/surrogate_model.py \
 单步执行：
 
 ```bash
-python Jailbreak/jailbreak_tools/single_jail.py \
+python Jailbreak/jailbreak_tools/single_jail/single_jail.py \
   --models qwen2:latest \
   --dataset Attack_Dataset/example.csv \
   --models-config models.yaml \
   --output-dir Jailbreak/jailbreak_results \
-  --resume \
-  --concurrency 5
+  --max-rounds 6
 ```
 
-开启防御：
+多数据集执行：
 
 ```bash
-python Jailbreak/jailbreak_tools/single_jail.py \
+python Jailbreak/jailbreak_tools/multi_jail/multi_jail.py \
   --models qwen2:latest \
-  --dataset Attack_Dataset/example.csv \
+  --datasets Attack_Dataset/example.csv Attack_Dataset/JailBench.csv \
   --models-config models.yaml \
-  --output-dir Defense/defense_results/all_layers \
-  --resume \
-  --enable-defense \
-  --defense-config path/to/defense_config.yaml
+  --output-dir Jailbreak/jailbreak_results \
+  --max-rounds 6
 ```
 
 #### Analyze
@@ -629,14 +626,14 @@ python -m unittest \
 这意味着当前代码相比之前更适合继续做下面两类工作：
 
 - 继续统一 schema
-- 拆分 `single_jail.py`
+- 继续扩展 `single_jail/` 与 `multi_jail/` 的策略模块
 
 ## 12. 后续建议
 
 如果你准备继续演进这个仓库，推荐优先顺序是：
 
 1. 统一跨模块结果 schema
-2. 拆分 `Jailbreak/jailbreak_tools/single_jail.py`
+2. 扩展 `Jailbreak/jailbreak_tools/single_jail/` 与 `multi_jail/`
 3. 继续配置化 `Defense`
 4. 提升 `Analyze` 的大规模吞吐
 
