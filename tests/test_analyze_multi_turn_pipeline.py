@@ -1,6 +1,6 @@
+import sys
 import tempfile
 import types
-import sys
 import unittest
 from pathlib import Path
 
@@ -22,16 +22,12 @@ if "pandas" not in sys.modules:
     fake_pandas.DataFrame = _FakeDataFrame
     sys.modules["pandas"] = fake_pandas
 
-from Analyze.pipeline import evaluate_records
+from Analyze.multi_turn.pipeline import evaluate_records
 from Analyze.schema import JudgeDecision
 
 
 class _FakeJudge:
-    def __init__(self):
-        self.calls = 0
-
     def judge(self, response):
-        self.calls += 1
         return JudgeDecision(
             is_jailbreak="no",
             risk_level=0,
@@ -47,21 +43,8 @@ class _FakePolicyJudge:
         return decision
 
 
-class AnalyzeResumeTest(unittest.TestCase):
-    def test_resume_skips_previously_written_rows(self):
-        with tempfile.TemporaryDirectory() as td:
-            input_dir = Path(td) / "input"
-            input_dir.mkdir()
-            (input_dir / "a.jsonl").write_text('{"response":"x"}\n{"response":"y"}\n', encoding="utf-8")
-            out_dir = Path(td) / "out"
-            judge = _FakeJudge()
-            policy = _FakePolicyJudge()
-            evaluate_records(input_dir, judge, policy, checkpoint_dir=out_dir, resume=True)
-            judge.calls = 0
-            evaluate_records(input_dir, judge, policy, checkpoint_dir=out_dir, resume=True)
-            self.assertEqual(judge.calls, 0)
-
-    def test_main_pipeline_does_not_infer_multi_turn_response(self):
+class AnalyzeMultiTurnPipelineTest(unittest.TestCase):
+    def test_multi_turn_pipeline_uses_success_round_response(self):
         with tempfile.TemporaryDirectory() as td:
             input_dir = Path(td) / "input"
             input_dir.mkdir()
@@ -71,23 +54,24 @@ class AnalyzeResumeTest(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            judge = _FakeJudge()
-            policy = _FakePolicyJudge()
-            result = evaluate_records(input_dir, judge, policy)
+            result = evaluate_records(input_dir, _FakeJudge(), _FakePolicyJudge())
 
-            self.assertEqual(result.iloc[0]["response"], "")
+            self.assertEqual(result.iloc[0]["response"], "second")
+            self.assertEqual(result.iloc[0]["model_name"], "m")
+            self.assertEqual(result.iloc[0]["attack_type"], "a")
 
-    def test_single_turn_record_keeps_top_level_response(self):
+    def test_multi_turn_pipeline_falls_back_to_last_round(self):
         with tempfile.TemporaryDirectory() as td:
             input_dir = Path(td) / "input"
             input_dir.mkdir()
-            (input_dir / "a.jsonl").write_text('{"response":"direct"}\n', encoding="utf-8")
+            (input_dir / "a.jsonl").write_text(
+                '{"conversation":[{"round":1,"output_response":"first"},{"round":3,"output_response":"third"}]}\n',
+                encoding="utf-8",
+            )
 
-            judge = _FakeJudge()
-            policy = _FakePolicyJudge()
-            result = evaluate_records(input_dir, judge, policy)
+            result = evaluate_records(input_dir, _FakeJudge(), _FakePolicyJudge())
 
-            self.assertEqual(result.iloc[0]["response"], "direct")
+            self.assertEqual(result.iloc[0]["response"], "third")
 
 
 if __name__ == "__main__":

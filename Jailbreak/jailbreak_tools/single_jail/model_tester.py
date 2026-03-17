@@ -59,15 +59,20 @@ class MultiTurnModelTester:
     def get_models(self, names: list[str]) -> list[dict]:
         chosen = []
         for name in names:
-            model = resolve_model(self.models_config_path, name)
-            if not model:
-                continue
-            if not model.get("model") or not model.get("base_url") or not model.get("type"):
-                continue
-            if str(model.get("type", "")).strip().lower() != "ollama" and not str(model.get("api_key") or "").strip():
-                continue
-            chosen.append(model)
+            model = self.get_model(name)
+            if model:
+                chosen.append(model)
         return chosen
+
+    def get_model(self, name: str) -> dict | None:
+        model = resolve_model(self.models_config_path, name)
+        if not model:
+            return None
+        if not model.get("model") or not model.get("base_url") or not model.get("type"):
+            return None
+        if str(model.get("type", "")).strip().lower() != "ollama" and not str(model.get("api_key") or "").strip():
+            return None
+        return model
 
     def build_defense_engine(self, defense_config_path: str | None, defense_archive_format: str = "jsonl") -> DefenseEngine:
         cfg = load_defense_config(defense_config_path)

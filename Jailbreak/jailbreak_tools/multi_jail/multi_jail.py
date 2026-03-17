@@ -12,7 +12,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+DEBUG_STORE_ROOT = Path("Jailbreak/jailbreak_tools/multi_jail/debug_store")
+
 from Jailbreak.jailbreak_tools.loader import Loader
+from Jailbreak.jailbreak_tools.multi_jail.adaptive_strategy import AdaptivePlannerStrategy, AttackPlanner
 from Jailbreak.jailbreak_tools.multi_jail.result_writer import MultiTurnResultWriter
 from Jailbreak.jailbreak_tools.multi_jail.runner import MultiTurnCaseRunner
 from Jailbreak.jailbreak_tools.multi_jail.runtime import (
@@ -22,18 +25,21 @@ from Jailbreak.jailbreak_tools.multi_jail.runtime import (
     finish_progress,
     run_task_queue,
 )
+from Jailbreak.jailbreak_tools.single_jail.judgers import LayeredJudge
 from Jailbreak.jailbreak_tools.single_jail.model_tester import MultiTurnModelTester
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="多轮越狱测试执行器")
     parser.add_argument("--models", nargs="+", required=True, help="待测试模型名列表")
+    parser.add_argument("--planner-model", required=True, help="用于生成多轮追问的辅助模型名")
+    parser.add_argument("--judge-model", required=True, help="用于判定越狱成功的评估模型名")
     parser.add_argument("--datasets", nargs="+", required=True, help="待测试数据集路径列表")
     parser.add_argument("--models-config", default="models.yaml")
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--timeout", type=int, default=120)
     parser.add_argument("--max-rounds", type=int, default=6)
-    parser.add_argument("--judge-mode", default="non_refusal", choices=["non_refusal"])
+    parser.add_argument("--judge-mode", default="layered_llm", choices=["layered_llm"])
     parser.add_argument("--concurrency", type=int, default=1)
     parser.add_argument("--autosave-interval", type=int, default=10)
     parser.add_argument("--resume", action="store_true")
@@ -67,6 +73,12 @@ async def main() -> int:
     tester = MultiTurnModelTester(models_config_path=args.models_config, timeout=args.timeout)
     try:
         models = tester.get_models(args.models)
+        planner_model = tester.get_model(args.planner_model)
+        if not planner_model:
+            raise ValueError(f"辅助模型不可用: {args.planner_model}")
+        judge_model = tester.get_model(args.judge_model)
+        if not judge_model:
+            raise ValueError(f"判定模型不可用: {args.judge_model}")
         dataset_cases = {dataset: _validate_dataset(dataset) for dataset in args.datasets}
         total = sum(len(cases) * len(models) for cases in dataset_cases.values())
         tracker = ResumeTracker(total=total)
@@ -77,7 +89,7 @@ async def main() -> int:
         try:
             for dataset in args.datasets:
                 output_path = _build_output_path(args.output_dir, args.models, dataset)
-                writer = MultiTurnResultWriter(output_path)
+                writer = MultiTurnResultWriter(output_path, debug_root=DEBUG_STORE_ROOT)
                 writers[dataset] = writer
                 if args.resume:
                     tracker.completed_pairs.update(MultiTurnResultWriter.load_completed_pairs(output_path))
@@ -87,9 +99,24 @@ async def main() -> int:
             defense_engine = None
             if args.enable_defense:
                 defense_engine = tester.build_defense_engine(args.defense_config, args.defense_archive_format)
+            followup_strategy = AdaptivePlannerStrategy(
+                planner_model=planner_model,
+                planner_caller=tester.call_model,
+            )
+            attack_planner = AttackPlanner(
+                planner_model=planner_model,
+                planner_caller=tester.call_model,
+            )
+            judge = LayeredJudge(
+                judge_model=judge_model,
+                model_caller=tester.call_model,
+            )
             runner = MultiTurnCaseRunner(
                 model_caller=tester.call_model,
                 max_rounds=args.max_rounds,
+                judge=judge,
+                followup_strategy=followup_strategy,
+                attack_planner=attack_planner,
                 defense_engine=defense_engine,
                 defense_enabled=args.enable_defense,
             )
