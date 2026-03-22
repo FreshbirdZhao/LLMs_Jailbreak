@@ -1,2 +1,0 @@
-source_file,total,yes_count,uncertain_count,success_rate,success_variance,ci95_low,ci95_high,risk_0_ratio,risk_1_ratio,risk_2_ratio,risk_3_ratio,risk_4_ratio
-qwen2_latest_jailbench_partial_multi_turn.jsonl,26,15,11,0.5769230769230769,0.2440828402366864,0.3894861374659171,0.7445555668634343,0.0,0.34615384615384615,0.0,0.07692307692307693,0.5769230769230769

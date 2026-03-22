@@ -416,3 +416,109 @@ def plot_risk_heatmap(group_df: pd.DataFrame, output_dir: str | Path) -> Path:
     fig.savefig(fig_path, bbox_inches="tight")
     plt.close()
     return fig_path
+
+
+def _records_from_dataframe(df: pd.DataFrame) -> list[dict]:
+    to_dict = getattr(df, "to_dict", None)
+    if callable(to_dict):
+        try:
+            return list(to_dict(orient="records"))
+        except TypeError:
+            pass
+    rows = getattr(df, "_rows", None)
+    if rows is not None:
+        return list(rows)
+    raise TypeError("Unsupported dataframe type for plotting")
+
+
+def plot_multi_turn_cumulative_success(round_df: pd.DataFrame, output_dir: str | Path) -> Path:
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    fig_path = out / "multi_turn_cumulative_success.png"
+    try:
+        _, plt, _ = _configure_matplotlib()
+    except Exception:
+        _write_placeholder_png(fig_path)
+        return fig_path
+
+    rows = _records_from_dataframe(round_df)
+    if not rows:
+        fig, ax = plt.subplots(figsize=(8, 4.5))
+        ax.set_title("Multi-turn Cumulative Success Rate")
+        ax.set_xlabel("Round")
+        ax.set_ylabel("Cumulative Success Rate")
+        ax.text(0.5, 0.5, "No data available", ha="center", va="center", transform=ax.transAxes)
+        fig.tight_layout()
+        fig.savefig(fig_path, bbox_inches="tight")
+        plt.close()
+        return fig_path
+
+    grouped: dict[str, list[dict]] = {}
+    for row in rows:
+        grouped.setdefault(str(row.get("source_file", "unknown") or "unknown"), []).append(row)
+
+    fig, ax = plt.subplots(figsize=(9, max(4.5, 3.8 + 0.2 * len(grouped))))
+    palette = ["#2E5EAA", "#C85C41", "#4C956C", "#9B6EF3", "#A67C52", "#D45087"]
+    for idx, (source_file, source_rows) in enumerate(sorted(grouped.items())):
+        source_rows.sort(key=lambda row: int(row.get("round", 0) or 0))
+        x = [int(row.get("round", 0) or 0) for row in source_rows]
+        y = [float(row.get("cumulative_success_rate", 0.0) or 0.0) for row in source_rows]
+        ax.plot(x, y, marker="o", linewidth=1.8, color=palette[idx % len(palette)], label=source_file)
+
+    ax.set_ylim(0, 1.0)
+    ax.set_xlabel("Round")
+    ax.set_ylabel("Cumulative Success Rate")
+    ax.set_title("Multi-turn Cumulative Success Rate by Round")
+    ax.legend(loc="best", frameon=False)
+    fig.tight_layout()
+    fig.savefig(fig_path, bbox_inches="tight")
+    plt.close()
+    return fig_path
+
+
+def plot_multi_turn_first_success_distribution(round_df: pd.DataFrame, output_dir: str | Path) -> Path:
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    fig_path = out / "multi_turn_first_success_distribution.png"
+    try:
+        _, plt, _ = _configure_matplotlib()
+    except Exception:
+        _write_placeholder_png(fig_path)
+        return fig_path
+
+    rows = _records_from_dataframe(round_df)
+    if not rows:
+        fig, ax = plt.subplots(figsize=(8, 4.5))
+        ax.set_title("First Success Round Distribution")
+        ax.set_xlabel("Round")
+        ax.set_ylabel("First Success Count")
+        ax.text(0.5, 0.5, "No data available", ha="center", va="center", transform=ax.transAxes)
+        fig.tight_layout()
+        fig.savefig(fig_path, bbox_inches="tight")
+        plt.close()
+        return fig_path
+
+    grouped: dict[str, list[dict]] = {}
+    for row in rows:
+        grouped.setdefault(str(row.get("source_file", "unknown") or "unknown"), []).append(row)
+
+    fig, ax = plt.subplots(figsize=(9, max(4.5, 3.8 + 0.2 * len(grouped))))
+    width = 0.8 / max(1, len(grouped))
+    palette = ["#355070", "#B56576", "#6D597A", "#43AA8B", "#BC6C25", "#577590"]
+    for idx, (source_file, source_rows) in enumerate(sorted(grouped.items())):
+        source_rows.sort(key=lambda row: int(row.get("round", 0) or 0))
+        x = [int(row.get("round", 0) or 0) for row in source_rows]
+        y = [int(row.get("first_success_count", 0) or 0) for row in source_rows]
+        shifted_x = [value + (idx - (len(grouped) - 1) / 2) * width for value in x]
+        ax.bar(shifted_x, y, width=width, color=palette[idx % len(palette)], label=source_file)
+
+    all_rounds = sorted({int(row.get("round", 0) or 0) for row in rows})
+    ax.set_xticks(all_rounds)
+    ax.set_xlabel("Round")
+    ax.set_ylabel("First Success Count")
+    ax.set_title("First Successful Jailbreak Round Distribution")
+    ax.legend(loc="best", frameon=False)
+    fig.tight_layout()
+    fig.savefig(fig_path, bbox_inches="tight")
+    plt.close()
+    return fig_path

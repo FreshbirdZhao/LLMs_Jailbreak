@@ -15,12 +15,14 @@ from Analyze.cli import (
 from Analyze.judges.structured_policy_judge import StructuredPolicyJudge
 from Analyze.multi_turn.pipeline import evaluate_records
 from Analyze.plotting import (
+    plot_multi_turn_cumulative_success,
+    plot_multi_turn_first_success_distribution,
     plot_risk_distribution,
     plot_risk_heatmap,
     plot_success_rate,
     plot_uncertainty_overview,
 )
-from Analyze.stats import compute_group_metrics
+from Analyze.stats import compute_group_metrics, compute_multi_turn_round_metrics
 
 
 def run_cli(argv: list[str] | None = None) -> int:
@@ -80,14 +82,18 @@ def run_cli(argv: list[str] | None = None) -> int:
         resume=args.resume,
     )
     group_df = compute_group_metrics(records_df)
+    round_df = compute_multi_turn_round_metrics(records_df)
 
     records_df.to_csv(output_dir / "records.csv", index=False)
     group_df.to_csv(output_dir / "group_metrics.csv", index=False)
+    round_df.to_csv(output_dir / "multi_turn_round_metrics.csv", index=False)
 
     plot_success_rate(group_df, figures_dir)
     plot_risk_distribution(group_df, figures_dir)
     plot_uncertainty_overview(group_df, figures_dir)
     plot_risk_heatmap(group_df, figures_dir)
+    plot_multi_turn_cumulative_success(round_df, figures_dir)
+    plot_multi_turn_first_success_distribution(round_df, figures_dir)
     _persist_source_manifest(args, output_dir)
     return 0
 

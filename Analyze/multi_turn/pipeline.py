@@ -43,6 +43,26 @@ def _extract_response(rec: dict[str, Any]) -> str:
     return str(selected_round.get("output_response", "") or "")
 
 
+def _extract_round_judge_statuses(rec: dict[str, Any]) -> list[str]:
+    conversation = rec.get("conversation")
+    if not isinstance(conversation, list):
+        return []
+
+    statuses: list[str] = []
+    for round_item in conversation:
+        if not isinstance(round_item, dict):
+            continue
+        statuses.append(str(round_item.get("judge_status", "") or ""))
+    return statuses
+
+
+def _extract_first_success_round(statuses: list[str]) -> int | None:
+    for idx, status in enumerate(statuses, start=1):
+        if status == "success":
+            return idx
+    return None
+
+
 def _iter_jsonl_records(input_dir: str | Path):
     base = Path(input_dir)
     for file_path in sorted(base.glob("*.jsonl")):
@@ -138,6 +158,8 @@ def evaluate_records(
         model_name = str(rec.get("model_name", "unknown") or "unknown")
         attack_type = str(rec.get("attack_type", "unknown") or "unknown")
         response = _extract_response(rec)
+        round_judge_statuses = _extract_round_judge_statuses(rec)
+        first_success_round_from_judge = _extract_first_success_round(round_judge_statuses)
         raw_source_file = str(rec.get("source_file") or rec.get("__source_file") or "unknown")
         source_file = source_alias_map.get(raw_source_file, raw_source_file) if source_alias_map else raw_source_file
 
@@ -154,6 +176,9 @@ def evaluate_records(
             "final_status": str(rec.get("final_status", "") or ""),
             "success_round": rec.get("success_round"),
             "rounds_used": rec.get("rounds_used"),
+            "round_count": len(round_judge_statuses),
+            "round_judge_statuses": round_judge_statuses,
+            "first_success_round_from_judge": first_success_round_from_judge,
             "is_jailbreak": final_decision.is_jailbreak,
             "risk_level": final_decision.risk_level,
             "evidence_spans": final_decision.evidence_spans,

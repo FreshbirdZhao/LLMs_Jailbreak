@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections import defaultdict
 
 import numpy as np
 import pandas as pd
@@ -19,6 +20,19 @@ def _wilson_ci(successes: int, total: int, z: float = _Z_95) -> tuple[float, flo
     center = (p + (z * z) / (2 * total)) / denom
     spread = z * math.sqrt((p * (1 - p) + (z * z) / (4 * total)) / total) / denom
     return (max(0.0, center - spread), min(1.0, center + spread))
+
+
+def _records_from_df(df: pd.DataFrame) -> list[dict]:
+    to_dict = getattr(df, "to_dict", None)
+    if callable(to_dict):
+        try:
+            return list(to_dict(orient="records"))
+        except TypeError:
+            pass
+    rows = getattr(df, "_rows", None)
+    if rows is not None:
+        return list(rows)
+    raise TypeError("Unsupported dataframe type for record extraction")
 
 
 def compute_group_metrics(df: pd.DataFrame) -> pd.DataFrame:
@@ -70,3 +84,78 @@ def compute_group_metrics(df: pd.DataFrame) -> pd.DataFrame:
     risk_ratio_cols = ["source_file"] + [f"risk_{i}_ratio" for i in range(5)]
     merged = grouped.merge(risk_counts[risk_ratio_cols], on=["source_file"], how="left")
     return merged
+
+
+def compute_multi_turn_round_metrics(df: pd.DataFrame) -> pd.DataFrame:
+    rows = _records_from_df(df)
+    if not rows:
+        cols = [
+            "source_file",
+            "round",
+            "total_records",
+            "attempt_count",
+            "success_count",
+            "first_success_count",
+            "round_success_rate",
+            "cumulative_success_count",
+            "cumulative_success_rate",
+        ]
+        return pd.DataFrame(columns=cols)
+
+    grouped_records: dict[str, list[dict]] = defaultdict(list)
+    for row in rows:
+        source_file = str(row.get("source_file", "unknown") or "unknown")
+        grouped_records[source_file].append(row)
+
+    metric_rows: list[dict[str, float | int | str]] = []
+    for source_file, source_rows in grouped_records.items():
+        total_records = len(source_rows)
+        max_round = 0
+        for row in source_rows:
+            statuses = list(row.get("round_judge_statuses", []) or [])
+            max_round = max(max_round, len(statuses))
+            rounds_used = row.get("rounds_used")
+            if isinstance(rounds_used, int):
+                max_round = max(max_round, rounds_used)
+
+        if max_round <= 0:
+            continue
+
+        first_success_rounds = []
+        for row in source_rows:
+            first_success_round = row.get("first_success_round_from_judge")
+            if isinstance(first_success_round, int):
+                first_success_rounds.append(first_success_round)
+
+        for round_number in range(1, max_round + 1):
+            attempt_count = 0
+            success_count = 0
+            first_success_count = 0
+
+            for row in source_rows:
+                statuses = list(row.get("round_judge_statuses", []) or [])
+                if len(statuses) >= round_number:
+                    attempt_count += 1
+                    if statuses[round_number - 1] == "success":
+                        success_count += 1
+
+                if row.get("first_success_round_from_judge") == round_number:
+                    first_success_count += 1
+
+            cumulative_success_count = sum(1 for value in first_success_rounds if value <= round_number)
+            metric_rows.append(
+                {
+                    "source_file": source_file,
+                    "round": round_number,
+                    "total_records": total_records,
+                    "attempt_count": attempt_count,
+                    "success_count": success_count,
+                    "first_success_count": first_success_count,
+                    "round_success_rate": (success_count / attempt_count) if attempt_count else 0.0,
+                    "cumulative_success_count": cumulative_success_count,
+                    "cumulative_success_rate": (cumulative_success_count / total_records) if total_records else 0.0,
+                }
+            )
+
+    metric_rows.sort(key=lambda row: (str(row["source_file"]), int(row["round"])))
+    return pd.DataFrame(metric_rows)
