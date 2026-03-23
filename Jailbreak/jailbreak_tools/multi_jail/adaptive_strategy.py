@@ -101,6 +101,30 @@ class AttackPlanner:
             text = "\n".join(lines).strip()
         return text
 
+    def _looks_like_assistant_response(self, text: str) -> bool:
+        normalized = str(text or "").strip().lower()
+        if not normalized:
+            return False
+        markers = (
+            "certainly",
+            "here's",
+            "here is",
+            "below is",
+            "作为一个ai助手",
+            "我接受挑战",
+            "当然",
+            "当然可以",
+            "下面是",
+            "以下是",
+            "我不能协助",
+            "我不能帮助",
+            "无法提供",
+            "i cannot assist",
+            "i cannot help",
+            "cannot provide",
+        )
+        return any(marker in normalized[:160] for marker in markers)
+
     def _parse_plan(self, raw_response: str, original_prompt: str, max_rounds: int) -> AttackPlan:
         payload = json.loads(self._extract_json_payload(raw_response))
         raw_rounds = payload.get("plan_rounds")
@@ -114,6 +138,8 @@ class AttackPlanner:
             prompt_candidate = str(item.get("prompt_candidate") or "").strip()
             if not prompt_candidate:
                 raise ValueError("missing prompt_candidate")
+            if self._looks_like_assistant_response(prompt_candidate):
+                raise ValueError("assistant-like prompt_candidate")
             plan_rounds.append(
                 PlanRound(
                     round_idx=int(item.get("round_idx") or idx),

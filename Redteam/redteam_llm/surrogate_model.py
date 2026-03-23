@@ -30,16 +30,37 @@ from common.llm.config import normalize_provider_config
 
 try:
     from Redteam.redteam_llm.clients import ClientConfig, OllamaClient, OpenAICompatClient
+    from Redteam.redteam_llm.output_naming import (
+        build_default_batch_output_path,
+        build_default_single_output_path,
+    )
     from Redteam.redteam_llm.prompting import build_generation_prompt, load_template
 except ImportError:
     from clients import ClientConfig, OllamaClient, OpenAICompatClient
+    from output_naming import build_default_batch_output_path, build_default_single_output_path
     from prompting import build_generation_prompt, load_template
 
-_TIMESTAMP_COUNTERS: Dict[str, int] = {}
 _EN_STOPWORDS = {
     "the", "and", "with", "that", "this", "from", "into", "about",
     "how", "what", "when", "where", "which", "why", "please",
 }
+
+
+def _resolve_project_path(path_str: str | Path) -> Path:
+    path = Path(path_str)
+    if path.is_absolute():
+        return path
+    return Path(_project_root) / path
+
+
+def _resolve_output_dir(path_str: str | Path) -> Path:
+    return _resolve_project_path(path_str)
+
+
+def _resolve_single_output_path(output: str | None, output_dir: str | Path) -> Path:
+    if output:
+        return _resolve_project_path(output)
+    return build_default_single_output_path(str(_resolve_output_dir(output_dir)))
 
 
 def load_batch_prompts(input_path: str) -> List[str]:
@@ -71,21 +92,6 @@ def load_batch_prompts(input_path: str) -> List[str]:
     return prompts
 
 
-def build_default_single_output_path(
-    output_dir: str = str(Path(__file__).resolve().parents[1] / "redteam_results"),
-) -> Path:
-    base_dir = Path(output_dir)
-    base_dir.mkdir(parents=True, exist_ok=True)
-
-    timestamp = datetime.now().strftime("%d%H%M")
-    counter = _TIMESTAMP_COUNTERS.get(timestamp, 0)
-    while True:
-        suffix = "" if counter == 0 else f"_{counter:02d}"
-        candidate = base_dir / f"redteam_results_{timestamp}{suffix}.jsonl"
-        if not candidate.exists():
-            _TIMESTAMP_COUNTERS[timestamp] = counter + 1
-            return candidate
-        counter += 1
 
 
 def _tokenize(text: str) -> List[str]:
@@ -188,8 +194,7 @@ class SurrogateModel:
             if hasattr(self.config, key):
                 setattr(self.config, key, value)
 
-        if not os.path.isabs(dataset_path):
-            dataset_path = os.path.normpath(os.path.join(_project_root, dataset_path))
+        dataset_path = str(_resolve_project_path(dataset_path))
 
         self.loader = Loader()
         print(f"正在加载数据集: {dataset_path}")
@@ -533,9 +538,7 @@ def main():
     args = parser.parse_args()
 
     def _resolve_model_from_yaml(models_yaml_path: str, model_name: str) -> dict | None:
-        p = Path(models_yaml_path)
-        if not p.is_absolute():
-            p = Path(_project_root) / models_yaml_path
+        p = _resolve_project_path(models_yaml_path)
         if not p.exists():
             return None
         return resolve_model(p, model_name)
@@ -589,9 +592,7 @@ def main():
     model = SurrogateModel(args.dataset, cfg)
 
     if args.input_csv:
-        input_csv_path = Path(args.input_csv)
-        if not input_csv_path.is_absolute():
-            input_csv_path = Path(__file__).parent.parent / args.input_csv
+        input_csv_path = _resolve_project_path(args.input_csv)
         if not input_csv_path.exists():
             print(f"❌ 错误：输入文件不存在: {input_csv_path}")
             return
@@ -602,15 +603,13 @@ def main():
             print(f"❌ 错误：{e}")
             return
 
-        output_dir = Path(args.output_dir)
-        if not output_dir.is_absolute():
-            output_dir = Path(__file__).parent.parent / args.output_dir
+        output_dir = _resolve_output_dir(args.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         if args.output:
-            output_file = Path(args.output)
+            output_file = _resolve_project_path(args.output)
             output_file.parent.mkdir(parents=True, exist_ok=True)
         else:
-            output_file = build_default_single_output_path(str(output_dir))
+            output_file = build_default_batch_output_path(input_csv_path, str(output_dir))
 
         total_saved = process_batch(
             model=model,
@@ -628,8 +627,8 @@ def main():
         generated = model.generate_sync(args.prompt, args.num_variants, args.top_k)
         for i, p in enumerate(generated, 1):
             print(f"\n变体 {i}:\n{'-' * 80}\n{p}")
-        output_path = args.output or str(build_default_single_output_path())
-        model.save_results(args.prompt, generated, output_path)
+        output_path = _resolve_single_output_path(args.output, args.output_dir)
+        model.save_results(args.prompt, generated, str(output_path))
 
 
 if __name__ == "__main__":

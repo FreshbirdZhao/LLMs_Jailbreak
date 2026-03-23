@@ -42,3 +42,10 @@ commercial:
     base_url: https://api.deepseek.com
     model: deepseek-reasoner
     api_key_env: DEEPSEEK_API_KEY
+
+  - name: qwen-plus-2025-07-28
+    type: openai_compatible
+    provider: external
+    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    model: qwen-plus-2025-07-28
+    api_key_env: QWEN_API_KEY

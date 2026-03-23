@@ -7,9 +7,18 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-from datetime import datetime
+import sys
 from pathlib import Path
 from typing import Any, Dict, List
+
+_project_root = str(Path(__file__).resolve().parents[2])
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+
+try:
+    from Redteam.redteam_llm.output_naming import build_default_converted_output_path
+except ImportError:
+    from redteam_llm.output_naming import build_default_converted_output_path
 
 
 def _clean_prompt(text: Any) -> str:
@@ -101,9 +110,11 @@ def convert_surrogate_json_to_csv(input_path: str, output_dir: str, output_name:
     if output_name:
         out_path = out_dir / output_name
     else:
-        out_path = out_dir / f"surrogate_{datetime.now().strftime('%y%m%d')}.csv"
+        out_path = build_default_converted_output_path(in_path, out_dir)
 
     records = _load_records(in_path)
+    if not records:
+        raise ValueError(f"未提取到有效 prompt: {in_path}")
 
     fields = ["prompt", "original_prompt", "variant_index", "model", "timestamp", "source_file"]
     with out_path.open("w", encoding="utf-8", newline="") as f:

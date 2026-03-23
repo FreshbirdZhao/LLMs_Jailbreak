@@ -35,6 +35,48 @@ def _records_from_df(df: pd.DataFrame) -> list[dict]:
     raise TypeError("Unsupported dataframe type for record extraction")
 
 
+def _coerce_round_number(value: object) -> int | None:
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, int):
+        return value if value > 0 else None
+    if isinstance(value, float):
+        if math.isnan(value) or not value.is_integer():
+            return None
+        coerced = int(value)
+        return coerced if coerced > 0 else None
+    return None
+
+
+def _extract_round_result_labels(row: dict) -> list[str]:
+    evaluated = list(row.get("round_evaluated_is_jailbreak", []) or [])
+    if evaluated:
+        return [str(value or "") for value in evaluated]
+
+    raw_statuses = list(row.get("round_judge_statuses", []) or [])
+    labels: list[str] = []
+    for status in raw_statuses:
+        labels.append("yes" if status == "success" else "no")
+    return labels
+
+
+def _first_yes_round(labels: list[str]) -> int | None:
+    for idx, label in enumerate(labels, start=1):
+        if label == "yes":
+            return idx
+    return None
+
+
+def _extract_first_success_round(row: dict) -> int | None:
+    first_success_round = _coerce_round_number(row.get("first_success_round_from_analysis"))
+    if first_success_round is not None:
+        return first_success_round
+    first_success_round = _coerce_round_number(row.get("first_success_round_from_judge"))
+    if first_success_round is not None:
+        return first_success_round
+    return _first_yes_round(_extract_round_result_labels(row))
+
+
 def compute_group_metrics(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         cols = [
@@ -112,10 +154,10 @@ def compute_multi_turn_round_metrics(df: pd.DataFrame) -> pd.DataFrame:
         total_records = len(source_rows)
         max_round = 0
         for row in source_rows:
-            statuses = list(row.get("round_judge_statuses", []) or [])
-            max_round = max(max_round, len(statuses))
-            rounds_used = row.get("rounds_used")
-            if isinstance(rounds_used, int):
+            labels = _extract_round_result_labels(row)
+            max_round = max(max_round, len(labels))
+            rounds_used = _coerce_round_number(row.get("rounds_used"))
+            if rounds_used is not None:
                 max_round = max(max_round, rounds_used)
 
         if max_round <= 0:
@@ -123,8 +165,8 @@ def compute_multi_turn_round_metrics(df: pd.DataFrame) -> pd.DataFrame:
 
         first_success_rounds = []
         for row in source_rows:
-            first_success_round = row.get("first_success_round_from_judge")
-            if isinstance(first_success_round, int):
+            first_success_round = _extract_first_success_round(row)
+            if first_success_round is not None:
                 first_success_rounds.append(first_success_round)
 
         for round_number in range(1, max_round + 1):
@@ -133,13 +175,14 @@ def compute_multi_turn_round_metrics(df: pd.DataFrame) -> pd.DataFrame:
             first_success_count = 0
 
             for row in source_rows:
-                statuses = list(row.get("round_judge_statuses", []) or [])
-                if len(statuses) >= round_number:
+                labels = _extract_round_result_labels(row)
+                if len(labels) >= round_number:
                     attempt_count += 1
-                    if statuses[round_number - 1] == "success":
+                    if labels[round_number - 1] == "yes":
                         success_count += 1
 
-                if row.get("first_success_round_from_judge") == round_number:
+                first_success_round = _extract_first_success_round(row)
+                if first_success_round == round_number:
                     first_success_count += 1
 
             cumulative_success_count = sum(1 for value in first_success_rounds if value <= round_number)

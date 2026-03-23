@@ -7,8 +7,8 @@ from typing import Any
 
 
 class ArchiveStore:
-    def __init__(self, path: Path, fmt: str = "jsonl") -> None:
-        self.path = path
+    def __init__(self, path: str | Path, fmt: str = "jsonl") -> None:
+        self.path = Path(path)
         self.fmt = fmt
         self.path.parent.mkdir(parents=True, exist_ok=True)
         if self.fmt == "sqlite":
@@ -61,4 +61,3 @@ class ArchiveStore:
 
         with self.path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
-

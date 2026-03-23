@@ -14,12 +14,24 @@ class OutputDefenseModule:
 
     def _redact(self, text: str) -> str:
         redacted = re.sub(
-            r"\b(malware|ransomware|bomb|weapon|detonator|payload|c2\s+server|phishing\s+kit)\b",
+            r"\b(malware|ransomware|bomb|weapon|detonator|payload|c2\s+server|phishing\s+kit|"
+            r"illegal\s+gambling|money\s+launder(?:ing)?|shell\s+entit(?:y|ies)|fincen|offshore|"
+            r"dead-?drop|burner\s+sim|payment\s+routing|liquidity\s+partner|odds\s+algorithm|"
+            r"privilege\s+escalat(?:e|ion)|session\s+cookie|credential\s+dump|otp\s+code|"
+            r"account\s+takeover|impersonat(?:e|ion)|cleanup\s+site|swap(?:ped)?\s+plates|"
+            r"meth|cocaine|fentanyl|heroin|smuggl(?:e|ing)|cross-?border\s+delivery)\b",
             "[REDACTED]",
             text,
             flags=re.I,
         )
-        redacted = re.sub(r"(爆炸物原料|引信|载荷|攻击链|恶意软件|勒索软件|武器)", "[REDACTED]", redacted, flags=re.I)
+        redacted = re.sub(
+            r"(爆炸物原料|引信|载荷|攻击链|恶意软件|勒索软件|武器|非法赌博|洗钱|空壳公司|离岸|地下钱庄|暗桩|跑分|现金交接|赔率算法|资金路由|"
+            r"提权|横向移动|持久化|会话cookie|窃取凭证|验证码|社工|账户接管|清理现场|套牌|绑架|灭迹|"
+            r"前体|冰毒|可卡因|芬太尼|海洛因|走私|运毒|跨境运送)",
+            "[REDACTED]",
+            redacted,
+            flags=re.I,
+        )
         return redacted
 
     def _context_boost(self, context: DefenseContext) -> int:

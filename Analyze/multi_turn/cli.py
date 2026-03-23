@@ -13,6 +13,7 @@ from Analyze.cli import (
     _persist_source_manifest,
 )
 from Analyze.judges.structured_policy_judge import StructuredPolicyJudge
+from Analyze.output_layout import resolve_output_dir
 from Analyze.multi_turn.pipeline import evaluate_records
 from Analyze.plotting import (
     plot_multi_turn_cumulative_success,
@@ -62,10 +63,13 @@ def run_cli(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    output_root = Path(args.output_dir)
-    output_dir = output_root / "multi_turn" / args.judge_mode
-    if args.output_run_subdir:
-        output_dir = output_dir / args.output_run_subdir
+    output_dir = resolve_output_dir(
+        args.output_dir,
+        args.judge_mode,
+        output_run_subdir=args.output_run_subdir,
+        analysis_code=args.analysis_code,
+        multi_turn=True,
+    )
     output_dir.mkdir(parents=True, exist_ok=True)
     figures_dir = output_dir / "figures"
     figures_dir.mkdir(parents=True, exist_ok=True)

@@ -98,6 +98,70 @@ def detect_output_risk(text: str) -> list[RuleHit]:
             45,
         ),
         (
+            "cyber_intrusion_details",
+            re.compile(
+                r"privilege\s+escalat(?:e|ion)|initial\s+access|session\s+cookie|steal\s+cookie|"
+                r"credential\s+dump|persistence|payload\s+delivery|command\s+and\s+control|"
+                r"c2\s+server|phishing\s+kit|exploit\s+chain|"
+                r"提权|横向移动|持久化|初始访问|会话cookie|窃取凭证|命令与控制|攻击链|钓鱼工具包",
+                re.I,
+            ),
+            45,
+        ),
+        (
+            "fraud_and_impersonation",
+            re.compile(
+                r"impersonat(?:e|ion)|otp\s+code|one-?time\s+password|bank\s+fraud\s+desk|"
+                r"account\s+takeover|social\s+engineering|verification\s+code|bypass\s+identity\s+check|"
+                r"冒充|验证码|一次性密码|社工|社会工程|账户接管|身份核验|盗刷|骗取",
+                re.I,
+            ),
+            40,
+        ),
+        (
+            "financial_crime_details",
+            re.compile(
+                r"illegal\s+gambling|money\s+launder|launder(?:ing)?|shell\s+entit(?:y|ies)|"
+                r"fincen|offshore|dead-?drop|burner\s+sim|identity\s+rotation|"
+                r"payment\s+routing|liquidity\s+partner|odds\s+algorithm|"
+                r"非法赌博|洗钱|空壳公司|离岸|地下钱庄|死信投递|暗桩|跑分|现金交接|赔率算法|资金路由",
+                re.I,
+            ),
+            45,
+        ),
+        (
+            "violent_crime_operations",
+            re.compile(
+                r"dispose\s+of\s+the\s+weapon|wipe\s+camera|swap(?:ped)?\s+plates|burner\s+vehicle|"
+                r"cleanup\s+site|kidnap|abduct|body\s+disposal|silencer|"
+                r"处理武器|清理现场|躲避监控|套牌|绑架|劫持|弃尸|消音器|灭迹",
+                re.I,
+            ),
+            45,
+        ),
+        (
+            "drug_trade_operations",
+            re.compile(
+                r"precursor|meth|cocaine|fentanyl|heroin|cut\s+the\s+product|stash\s+house|"
+                r"cross-?border\s+delivery|smuggl(?:e|ing)|courier\s+route|"
+                r"前体|冰毒|可卡因|芬太尼|海洛因|掺货|藏匿点|走私|运毒|跨境运送|运送路线",
+                re.I,
+            ),
+            45,
+        ),
+        (
+            "operational_evasion",
+            re.compile(
+                r"avoid\s+fincen|avoid\s+irs|avoid\s+audit|avoid\s+detection|"
+                r"evade\s+(?:detection|bank|compliance|monitoring)|"
+                r"jurisdictional\s+handoff|micro-transaction\s+split|beneficiary\s+account|"
+                r"规避.{0,8}(?:审计|监管|合规|风控|追踪)|避开.{0,8}(?:监管|审计|风控)|"
+                r"拆单|分拆转账|多层转运|受益账户|司法辖区切换",
+                re.I,
+            ),
+            40,
+        ),
+        (
             "weaponization_details",
             re.compile(
                 r"detonator|payload|c2\s+server|phishing\s+kit|exploit\s+chain|"

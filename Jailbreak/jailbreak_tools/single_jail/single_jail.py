@@ -14,7 +14,6 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from Jailbreak.jailbreak_tools.loader import Loader
 from Jailbreak.jailbreak_tools.multi_jail.result_writer import MultiTurnResultWriter
-from Jailbreak.jailbreak_tools.multi_jail.runner import MultiTurnCaseRunner
 from Jailbreak.jailbreak_tools.multi_jail.runtime import (
     ResumeTracker,
     autosave_loop,
@@ -22,6 +21,7 @@ from Jailbreak.jailbreak_tools.multi_jail.runtime import (
     finish_progress,
     run_task_queue,
 )
+from Jailbreak.jailbreak_tools.single_jail.judgers import NonRefusalJudge
 from Jailbreak.jailbreak_tools.single_jail.model_tester import MultiTurnModelTester
 
 
@@ -55,7 +55,78 @@ def _validate_dataset(path: str) -> list[dict]:
 def _build_output_path(output_dir: str, model_names: list[str], dataset: str) -> Path:
     safe_models = "_".join(name.replace("/", "_").replace(":", "_") for name in model_names)
     dataset_name = Path(dataset).stem.lower().replace(" ", "_")
-    return Path(output_dir) / f"{safe_models}_{dataset_name}_single_multi_turn.jsonl"
+    return Path(output_dir) / f"{safe_models}_{dataset_name}_single_turn.jsonl"
+
+
+async def _run_single_case(model_caller, model: dict, case: dict, judge=None) -> dict:
+    judge = judge or NonRefusalJudge()
+    response, elapsed, http_status = await model_caller(
+        model,
+        [{"role": "user", "content": case["prompt"]}],
+    )
+    judge_result = judge.judge(response)
+    success_round = 1 if judge_result.status == "success" else None
+
+    return {
+        "model_name": model["name"],
+        "test_id": case["id"],
+        "test_name": case["name"],
+        "category": case.get("category", "unknown"),
+        "attack_type": case.get("attack_type", "unknown"),
+        "prompt": case["prompt"],
+        "response": response,
+        "http_status": http_status,
+        "elapsed_time": round(float(elapsed), 2),
+        "final_status": judge_result.status,
+        "success_round": success_round,
+        "rounds_used": 1,
+        "judge_mode": "non_refusal",
+        "judge_model_name": "",
+        "judge_final_reason": judge_result.reason,
+        "judge_final_confidence": judge_result.confidence,
+        "max_rounds": 1,
+        "conversation": [
+            {
+                "round": 1,
+                "input_prompt": case["prompt"],
+                "user_prompt": case["prompt"],
+                "output_response": response,
+                "assistant_response": response,
+                "elapsed_time": round(float(elapsed), 2),
+                "judge_stage": judge_result.stage,
+                "judge_status": judge_result.status,
+                "judge_reason": judge_result.reason,
+                "judge_feedback": {
+                    "status": judge_result.status,
+                    "reason": judge_result.reason,
+                    "stage": judge_result.stage,
+                    "model_name": judge_result.model_name,
+                    "confidence": judge_result.confidence,
+                    "response_type": judge_result.response_type,
+                    "failure_point": judge_result.failure_point,
+                    "adjustment_goal": judge_result.adjustment_goal,
+                    "do_not_repeat": list(judge_result.do_not_repeat),
+                    "alignment_to_original_prompt": judge_result.alignment_to_original_prompt,
+                },
+                "judge_model_name": judge_result.model_name,
+                "judge_confidence": judge_result.confidence,
+                "defense_action": "allow",
+                "defense_risk_level": 0,
+                "defense_reasons": [],
+                "defense_prompt": case["prompt"],
+                "followup_prompt": "",
+                "followup_strategy": "",
+                "followup_generator_model": "",
+                "followup_generation_error": "",
+            }
+        ],
+        "defense_enabled": False,
+        "defense_blocked": False,
+        "defense_final_action": "allow",
+        "defense_final_risk_level": 0,
+        "defense_final_reasons": [],
+        "planner_model_name": "",
+    }
 
 
 async def main() -> int:
@@ -71,15 +142,6 @@ async def main() -> int:
     tracker = ResumeTracker(total=len(cases) * len(models))
     if args.resume:
         tracker.completed_pairs.update(MultiTurnResultWriter.load_completed_pairs(output_path))
-    defense_engine = None
-    if args.enable_defense:
-        defense_engine = tester.build_defense_engine(args.defense_config, args.defense_archive_format)
-    runner = MultiTurnCaseRunner(
-        model_caller=tester.call_model,
-        max_rounds=args.max_rounds,
-        defense_engine=defense_engine,
-        defense_enabled=args.enable_defense,
-    )
     stop_event = asyncio.Event()
     autosave_task = None
     if args.autosave_interval > 0:
@@ -101,7 +163,7 @@ async def main() -> int:
                 )
 
         async def worker_fn(task: dict) -> str:
-            result = await runner.run_case(task["model"], task["case"])
+            result = await _run_single_case(tester.call_model, task["model"], task["case"])
             await task["writer"].write_async(result)
             async with progress_lock:
                 emit_progress(tracker.progress_line(result["final_status"]))
