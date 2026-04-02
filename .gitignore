@@ -12,6 +12,7 @@ build/
 venv/
 env/
 ENV/
+Jelly_Z/
 
 # IDE
 .vscode/
@@ -30,4 +31,3 @@ Thumbs.db
 
 # Git
 .git/
-
