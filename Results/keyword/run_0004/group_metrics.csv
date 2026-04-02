@@ -1,0 +1,6 @@
+source_file,total,yes_count,uncertain_count,success_rate,success_variance,ci95_low,ci95_high,risk_0_ratio,risk_1_ratio,risk_2_ratio,risk_3_ratio,risk_4_ratio
+deepseek-chat_jailbench_partial_single_turn.jsonl,200,0,200,0.0,0.0,1.734723475976807e-18,0.018845326377266575,0.0,1.0,0.0,0.0,0.0
+deepseek-r1_1.5b_jailbench_partial_single_turn.jsonl,200,0,200,0.0,0.0,1.734723475976807e-18,0.018845326377266575,0.0,1.0,0.0,0.0,0.0
+qwen-plus_jailbench_partial_single_turn.jsonl,200,0,200,0.0,0.0,1.734723475976807e-18,0.018845326377266575,0.0,1.0,0.0,0.0,0.0
+qwen2_latest_jailbench_partial_single_turn.jsonl,200,0,200,0.0,0.0,1.734723475976807e-18,0.018845326377266575,0.0,1.0,0.0,0.0,0.0
+zarigata_unfiltered-llama3_latest_jailbench_partial_single_turn.jsonl,200,0,200,0.0,0.0,1.734723475976807e-18,0.018845326377266575,0.0,1.0,0.0,0.0,0.0

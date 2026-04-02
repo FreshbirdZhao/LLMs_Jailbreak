@@ -9,7 +9,6 @@ dist/
 build/
 
 # Virtual Environment
-Jelly_Z/
 venv/
 env/
 ENV/
@@ -31,5 +30,4 @@ Thumbs.db
 
 # Git
 .git/
-
 
