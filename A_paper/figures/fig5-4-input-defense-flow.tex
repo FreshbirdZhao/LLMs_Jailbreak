@@ -1,0 +1,17 @@
+\begin{tikzpicture}[
+    x=1pt,y=1pt,font=\small,>=stealth,
+    block/.style={draw=#1!75!black, fill=#1!12, rounded corners=9pt, line width=0.9pt, align=center},
+    flow/.style={->, line width=0.95pt, draw=gray!75}
+]
+\node[block=gray, minimum width=90pt, minimum height=34pt] (recv) at (82,90) {\textbf{输入接收}};
+\node[block=blue, minimum width=96pt, minimum height=34pt] (rule) at (212,90) {\textbf{规则匹配}};
+\node[block=teal, minimum width=96pt, minimum height=34pt] (cls) at (342,90) {\textbf{分类器打分}};
+\node[block=orange, minimum width=96pt, minimum height=34pt] (fuse) at (472,90) {\textbf{风险融合}};
+\node[block=red, minimum width=110pt, minimum height=42pt] (act) at (624,90) {\textbf{动作输出}\\allow / rewrite / block};
+\draw[flow] (recv.east) -- (rule.west);
+\draw[flow] (rule.east) -- (cls.west);
+\draw[flow] (cls.east) -- (fuse.west);
+\draw[flow] (fuse.east) -- (act.west);
+\node[anchor=west, font=\bfseries\small] at (18,146) {输入层防御流程图};
+\node[anchor=west, font=\scriptsize, text=gray!70!black] at (18,28) {映射重点：认知误导、角色操控、规则豁免、显式高危任务};
+\end{tikzpicture}

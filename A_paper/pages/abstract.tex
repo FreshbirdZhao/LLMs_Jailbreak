@@ -1,0 +1,31 @@
+% 中英文摘要
+\phantomsection
+\pagenumbering{Roman}
+\addcontentsline{toc}{chapter}{摘\hspace{1em}要}
+
+\begin{cnabstract}{大语言模型；安全对齐；越狱攻击；提示工程；模型安全}
+
+大语言模型（Large Language Models, LLMs）近年来在智能问答、内容生成和复杂交互等场景中得到广泛应用，但其安全性问题也随之日益突出。现有模型虽然普遍经过监督微调、基于人类反馈的强化学习等安全对齐训练，面对经过精心设计的越狱提示时，仍可能输出违反安全规范的内容。攻击者通常无需掌握模型内部结构，仅通过角色设定、语义包装、上下文操控等方式重构输入，就有机会诱导模型绕过既有约束，这也使大语言模型在开放环境中的部署面临持续的安全风险。
+
+现有研究大多围绕具体攻击方法或防御策略展开，关于安全对齐为何失效、不同越狱方式之间有何内在联系，以及如何在统一口径下开展系统评测，仍缺乏较为完整的分析框架。针对上述问题，本文围绕大语言模型的安全对齐漏洞与越狱攻击展开研究。首先，从模型训练与后对齐机制出发，分析监督微调（Supervised Fine-Tuning, SFT）、基于人类反馈的强化学习（Reinforcement Learning from Human Feedback, RLHF）以及直接偏好优化（Direct Preference Optimization, DPO）等主流方法在安全约束上的作用边界，并从目标冲突、表层对齐和上下文依赖等角度讨论对齐失效的内在原因。
+
+在此基础上，本文构建了一个覆盖静态攻击、自动化红队扩展和多轮交互扩展的多维越狱攻击框架，并围绕九类静态攻击维度组织统一测试集与实验流程，对不同攻击方式进行标准化比较。结合三个模型的实验结果，本文发现当前模型虽然在显式高危请求面前具备一定基础拦截能力，但安全边界仍然不够稳定，其中认知误导、指令重构和上下文前缀等攻击方式更容易触发对齐失效，反映出模型在复杂语义包装和任务结构操控条件下存在较为一致的脆弱性。
+
+在防御层面，本文进一步提出了由输入层、交互层和输出层构成的三层防御思路，用于分别应对风险输入识别、过程性诱导控制和危险内容兜底等问题。研究表明，当前大语言模型的安全对齐仍然存在明显脆弱性，越狱问题并非局部现象，而与对齐机制本身的约束边界密切相关。本文的研究有助于从统一视角理解大语言模型的安全失效机理，并为后续越狱评测体系构建与鲁棒防御设计提供参考。
+\end{cnabstract}
+\newpage
+
+\phantomsection
+\addcontentsline{toc}{chapter}{ABSTRACT}
+
+\begin{enabstract}{Large Language Models; Safety Alignment; Jailbreak Attacks; Prompt Engineering; AI Safety}
+
+Large Language Models (LLMs) have been widely deployed in intelligent question answering, content generation, and complex interactive systems. At the same time, their safety limitations have become increasingly apparent. Although mainstream models are typically aligned through post-training techniques such as supervised fine-tuning and reinforcement learning from human feedback, they may still produce unsafe or policy-violating responses when exposed to carefully crafted jailbreak prompts. In practice, attackers often do not need access to model parameters or internal alignment strategies. Instead, they can reshape the input through role-playing, semantic reframing, or contextual manipulation to weaken existing safety constraints, which poses persistent risks for real-world deployment.
+
+Existing studies have mainly focused on individual attack techniques or defense strategies, while a more systematic understanding of why safety alignment fails, how different jailbreak methods are related, and how they should be evaluated under a unified framework is still lacking. To address these issues, this thesis studies safety alignment vulnerabilities and jailbreak attacks in LLMs. We first examine the limitations of mainstream alignment methods, including Supervised Fine-Tuning (SFT), Reinforcement Learning from Human Feedback (RLHF), and Direct Preference Optimization (DPO), and analyze alignment failure from the perspectives of objective conflict, superficial alignment, and context-dependent behavior.
+
+Building on this analysis, we construct a multi-dimensional jailbreak framework that covers static attacks, automated red-teaming extensions, and multi-turn interaction extensions. Within this framework, we organize a unified benchmark and experimental pipeline across nine static attack dimensions, enabling standardized comparison of different jailbreak strategies. Experimental results on three models show that current systems retain some basic resistance to explicit high-risk requests, yet their safety boundaries remain unstable. In particular, cognitively misleading prompts, instruction restructuring, and context-prefix-based attacks are more likely to trigger alignment failures, revealing consistent vulnerabilities under complex semantic packaging and task-structure manipulation.
+
+On the defense side, we further propose a three-layer defense scheme composed of input-layer filtering, interaction-layer control, and output-layer safeguarding, targeting risk detection before generation, process-level intervention during interaction, and harmful-content mitigation after generation. The results indicate that jailbreak vulnerability is not an isolated phenomenon but is closely tied to the intrinsic limits of current alignment mechanisms. This work contributes to a more unified understanding of safety failure in LLMs and provides a reference for future jailbreak evaluation and robust defense design.
+\end{enabstract}
+\newpage

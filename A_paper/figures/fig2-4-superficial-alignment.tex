@@ -1,0 +1,43 @@
+\begin{tikzpicture}[
+    x=1pt,
+    y=1pt,
+    font=\small,
+    >=stealth,
+    panel/.style={draw=gray!40, rounded corners=14pt, fill=gray!4, line width=1pt},
+    card/.style={draw=#1!72!black, fill=#1!10, rounded corners=9pt, line width=0.9pt, align=center},
+    flow/.style={->, line width=0.95pt, draw=gray!75},
+    weak/.style={->, line width=0.85pt, draw=red!70!black, dashed}
+]
+\def\W{730}
+\def\H{262}
+\fill[gray!4, rounded corners=16pt] (0,0) rectangle (\W,\H);
+\draw[gray!35, rounded corners=16pt, line width=1pt] (0,0) rectangle (\W,\H);
+\fill[cyan!18, rounded corners=14pt] (18,214) rectangle (712,244);
+\node[anchor=west, font=\bfseries\small] at (34,229) {Superficial Alignment and Generalization Failure};
+\node[anchor=east, font=\scriptsize, text=gray!70!black] at (694,229) {in-distribution refusal vs out-of-distribution drift};
+
+\draw[panel] (36,34) rectangle (350,194);
+\draw[panel] (380,34) rectangle (694,194);
+\node[font=\bfseries\scriptsize, text=green!45!black] at (193,178) {训练分布内样本};
+\node[font=\bfseries\scriptsize, text=red!55!black] at (537,178) {分布外变形样本};
+
+\node[card=green, minimum width=94pt, minimum height=38pt] (in1) at (96,132) {显式危险提示};
+\node[card=green, minimum width=94pt, minimum height=38pt] (in2) at (193,132) {拒答模式\\已学会触发};
+\node[card=green, minimum width=94pt, minimum height=38pt] (in3) at (290,132) {安全输出\\边界清晰};
+\draw[flow] (in1) -- (in2);
+\draw[flow] (in2) -- (in3);
+\node[card=green, minimum width=220pt, minimum height=34pt] at (193,76) {训练分布中的表层模式: 敏感词、固定拒答模板、显式风险信号};
+
+\node[card=orange, minimum width=76pt, minimum height=34pt] (out1) at (438,132) {语义重写};
+\node[card=orange, minimum width=76pt, minimum height=34pt] (out2) at (522,132) {编码转换};
+\node[card=orange, minimum width=76pt, minimum height=34pt] (out3) at (606,132) {上下文包装};
+\draw[flow] (out1) -- (out2);
+\draw[flow] (out2) -- (out3);
+
+\node[card=red, minimum width=214pt, minimum height=42pt] (blur) at (537,76) {拒答触发减弱\\模型转而依赖通用语言建模路径\\安全边界开始模糊};
+\draw[weak] (out1.south) .. controls (438,102) and (490,88) .. (blur.west);
+\draw[weak] (out2.south) -- (blur.north);
+\draw[weak] (out3.south) .. controls (606,102) and (586,88) .. (blur.east);
+
+\node[font=\scriptsize, text=gray!75!black, align=left] at (365,18) {结论: 对齐主要学习可观测行为模式, 当输入形式偏离训练分布时, 原有拒答模式可能不再稳定触发};
+\end{tikzpicture}

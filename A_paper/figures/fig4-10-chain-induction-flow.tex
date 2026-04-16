@@ -1,0 +1,15 @@
+\begin{tikzpicture}[
+    x=1pt,y=1pt,font=\small,>=stealth,
+    block/.style={draw=#1!75!black, fill=#1!12, rounded corners=9pt, line width=0.9pt, align=center},
+    flow/.style={->, line width=0.95pt, draw=gray!75}
+]
+\node[block=blue, minimum width=112pt, minimum height=40pt] (q1) at (90,88) {\textbf{正常问答示例}\\建立回答节奏};
+\node[block=teal, minimum width=112pt, minimum height=40pt] (q2) at (250,88) {\textbf{过渡问题}\\保持语境连续};
+\node[block=orange, minimum width=112pt, minimum height=40pt] (q3) at (410,88) {\textbf{危险问题嵌入}\\隐藏在链式结构末端};
+\node[block=red, minimum width=112pt, minimum height=40pt] (q4) at (570,88) {\textbf{模型延续作答}\\安全审查强度下移};
+\draw[flow] (q1.east) -- (q2.west);
+\draw[flow] (q2.east) -- (q3.west);
+\draw[flow] (q3.east) -- (q4.west);
+\node[anchor=west, font=\bfseries\small] at (18,152) {示例链诱导案例流程图};
+\node[anchor=west, font=\scriptsize, text=gray!70!black] at (18,24) {图中仅保留结构骨架, 不展示危险原文};
+\end{tikzpicture}

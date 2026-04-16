@@ -1,0 +1,42 @@
+\begin{tikzpicture}[
+    x=1pt,
+    y=1pt,
+    font=\small,
+    >=stealth,
+    stage/.style={draw=#1!72!black, fill=#1!10, rounded corners=10pt, line width=0.95pt, minimum width=110pt, minimum height=54pt, align=center},
+    risk/.style={draw=#1!72!black, fill=white, rounded corners=6pt, line width=0.8pt, inner xsep=6pt, inner ysep=3pt, font=\scriptsize},
+    flow/.style={->, line width=1pt, draw=gray!78},
+    trend/.style={line width=1.1pt, draw=red!70!black}
+]
+\def\W{730}
+\def\H{248}
+\fill[gray!4, rounded corners=16pt] (0,0) rectangle (\W,\H);
+\draw[gray!35, rounded corners=16pt, line width=1pt] (0,0) rectangle (\W,\H);
+\fill[cyan!18, rounded corners=14pt] (18,200) rectangle (712,230);
+\node[anchor=west, font=\bfseries\small] at (34,215) {Multi-turn Alignment Failure Path};
+\node[anchor=east, font=\scriptsize, text=gray!70!black] at (694,215) {risk accumulation across interaction rounds};
+
+\node[stage=blue] (s1) at (92,112) {\textbf{初始试探}\\低风险提问\\边界摸索};
+\node[stage=teal] (s2) at (226,112) {\textbf{角色巩固}\\设定身份\\重塑语境};
+\node[stage=orange] (s3) at (360,112) {\textbf{规则豁免}\\弱化限制\\制造例外};
+\node[stage=red!80!orange] (s4) at (494,112) {\textbf{任务细化}\\逐步补充\\逼近敏感目标};
+\node[stage=red] (s5) at (628,112) {\textbf{最终突破}\\输出偏离\\安全失效};
+
+\draw[flow] (s1) -- (s2);
+\draw[flow] (s2) -- (s3);
+\draw[flow] (s3) -- (s4);
+\draw[flow] (s4) -- (s5);
+
+\node[risk=blue] at (92,62) {风险低};
+\node[risk=teal] at (226,62) {风险上升};
+\node[risk=orange] at (360,62) {约束被松动};
+\node[risk=red!80!orange] at (494,62) {累计偏移};
+\node[risk=red] at (628,62) {高风险输出};
+
+\draw[trend] (92,28) -- (226,40) -- (360,56) -- (494,74) -- (628,96);
+\foreach \x/\y in {92/28,226/40,360/56,494/74,628/96}
+  \fill[red!70!black] (\x,\y) circle (2.2pt);
+\node[anchor=west, font=\scriptsize, text=red!70!black] at (78,18) {累计风险};
+
+\node[font=\scriptsize, text=gray!72!black, align=left] at (360,18) {多轮交互的关键问题不在单次越界, 而在于历史上下文会持续重塑模型的条件分布};
+\end{tikzpicture}

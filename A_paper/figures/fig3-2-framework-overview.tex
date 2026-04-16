@@ -1,0 +1,48 @@
+\begin{tikzpicture}[
+    x=1pt,
+    y=1pt,
+    font=\small,
+    >=stealth,
+    panel/.style={draw=gray!35, rounded corners=14pt, fill=gray!4, line width=1pt},
+    block/.style={draw=#1!75!black, fill=#1!12, rounded corners=9pt, line width=0.9pt, align=center},
+    flow/.style={->, line width=0.95pt, draw=gray!75}
+]
+\def\W{740}
+\def\H{286}
+\fill[gray!4, rounded corners=16pt] (0,0) rectangle (\W,\H);
+\draw[gray!35, rounded corners=16pt, line width=1pt] (0,0) rectangle (\W,\H);
+\fill[cyan!18, rounded corners=14pt] (18,244) rectangle (722,272);
+\node[anchor=west, font=\bfseries\small] at (34,258) {多维越狱攻击框架总体图};
+\node[anchor=east, font=\scriptsize, text=gray!70!black] at (704,258) {统一执行链路连接静态测试与扩展模块};
+
+\draw[panel] (30,52) rectangle (204,222);
+\node[anchor=west, font=\bfseries\scriptsize, text=blue!60!black] at (44,206) {输入侧};
+\node[block=blue, minimum width=122pt, minimum height=36pt] (static) at (117,174) {\textbf{静态攻击数据集}\\九类攻击维度};
+\node[block=orange, minimum width=122pt, minimum height=36pt] (redteam) at (117,126) {\textbf{自动化红队扩展}\\代理模型生成变体};
+\node[block=violet, minimum width=122pt, minimum height=36pt] (multi) at (117,78) {\textbf{多轮交互扩展}\\连续追问与策略调整};
+
+\draw[panel] (230,38) rectangle (532,236);
+\node[anchor=west, font=\bfseries\scriptsize, text=teal!60!black] at (246,220) {统一执行与分析流水线};
+\node[block=teal, minimum width=70pt, minimum height=30pt] (load) at (282,154) {\textbf{数据加载}\\标准化};
+\node[block=teal, minimum width=70pt, minimum height=30pt] (call) at (381,154) {\textbf{模型调用}};
+\node[block=teal, minimum width=70pt, minimum height=30pt] (judge) at (480,154) {\textbf{在线初判}};
+\node[block=green, minimum width=70pt, minimum height=30pt] (review) at (331,92) {\textbf{离线复核}};
+\node[block=green, minimum width=70pt, minimum height=30pt] (agg) at (430,92) {\textbf{聚合分析}};
+\draw[flow] (load.east) -- (call.west);
+\draw[flow] (call.east) -- (judge.west);
+\draw[flow] (judge.south west) -- (review.north);
+\draw[flow] (review.east) -- (agg.west);
+
+\draw[panel] (560,52) rectangle (710,222);
+\node[anchor=west, font=\bfseries\scriptsize, text=red!60!black] at (574,206) {输出侧};
+\node[block=red, minimum width=100pt, minimum height=34pt] (records) at (635,170) {\textbf{records.csv}\\逐样本明细};
+\node[block=red, minimum width=100pt, minimum height=34pt] (metrics) at (635,122) {\textbf{group\_metrics.csv}\\分组统计};
+\node[block=brown, minimum width=100pt, minimum height=34pt] (cases) at (635,74) {\textbf{案例分析}\\风险等级 / 证据片段};
+
+\draw[flow] (static.east) -- (load.west);
+\draw[flow] (redteam.east) -- (load.west);
+\draw[flow] (multi.east) -- (load.west);
+\draw[flow] (judge.east) -- (records.west);
+\draw[flow] (agg.east) -- (metrics.west);
+\draw[flow] (agg.south east) .. controls (500,58) and (560,74) .. (cases.west);
+\end{tikzpicture}

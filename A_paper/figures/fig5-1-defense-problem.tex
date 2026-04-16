@@ -1,0 +1,13 @@
+\begin{tikzpicture}[
+    x=1pt,y=1pt,font=\small,>=stealth,
+    block/.style={draw=#1!75!black, fill=#1!12, rounded corners=9pt, line width=0.9pt, align=center},
+    flow/.style={->, line width=0.95pt, draw=gray!75}
+]
+\node[block=orange, minimum width=110pt, minimum height=38pt] (in) at (100,102) {\textbf{输入前}\\显式恶意意图\\提示注入信号};
+\node[block=teal, minimum width=110pt, minimum height=38pt] (mid) at (294,102) {\textbf{交互中}\\多轮诱导\\上下文累积};
+\node[block=red, minimum width=110pt, minimum height=38pt] (out) at (488,102) {\textbf{输出后}\\危险步骤\\边界性内容泄露};
+\draw[flow] (in.east) -- node[above, font=\scriptsize] {风险推进} (mid.west);
+\draw[flow] (mid.east) -- node[above, font=\scriptsize] {继续放大} (out.west);
+\node[anchor=west, font=\bfseries\small] at (18,164) {越狱防御问题定义图};
+\node[anchor=west, font=\scriptsize, text=gray!70!black] at (18,28) {风险并非只出现在单一点位, 而是沿输入、交互、输出全过程传播};
+\end{tikzpicture}

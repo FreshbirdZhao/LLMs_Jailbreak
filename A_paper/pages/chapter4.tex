@@ -1,0 +1,255 @@
+% Chapter 4
+
+\chapter{多维越狱攻击实验评测与结果分析}
+
+\section{实验目标与实验设置}
+
+在第三章构建多维越狱攻击框架的基础上，本章进一步围绕静态攻击实验结果展开评测与分析，重点回答三个问题：其一，在统一实验口径下，不同攻击维度暴露出的安全对齐脆弱性是否具有稳定差异；其二，这些差异是否会跨模型重复出现，从而体现为更具普遍性的安全对齐漏洞；其三，实验中观察到的成功样本、不确定样本与高风险样本分布，能够在多大程度上回应第二章所分析的目标冲突、表层对齐与上下文依赖问题。
+
+本章所用静态实验结果来自 \texttt{/home/jellyz/Experiment/Results/final} 下三组最新运行结果，分别对应 \texttt{deepseek-chat}、\texttt{qwen2.5:1.5b} 与 \texttt{qwen2.5:3b} 三个模型。三组实验均使用统一的静态攻击数据集、统一的单轮执行流程与统一的离线复核标准，因此可以在同一指标体系下进行横向比较。对于每个模型，系统均输出 \texttt{group\_metrics.csv}、\texttt{records.csv}、\texttt{representative\_cases.csv} 以及配套图表，用于从总体成功率、风险等级分布、边界模糊程度和典型案例四个层面开展分析。
+
+需要说明的是，越狱攻击实验本身属于高风险安全评测，其结果并不应仅以“成功率高低”做单一评价。一方面，当前对齐模型已经能够在大量显式风险请求前触发拒答，因此静态攻击的直接成功率整体不会很高；另一方面，若某些攻击维度能够在多个模型上重复触发成功样本，或持续产生大规模“拒答与风险信号并存”的不确定响应，则依然说明这些维度揭示了安全边界中的结构性漏洞\cite{markov2022holistic,phute2024llmselfdefense}。因此，本章的分析重心并非建立模型能力排序，而是从跨模型共性出发识别更值得关注的安全对齐失效模式。
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.98\textwidth}{!}{\input{figures/fig4-1-experiment-overview.tex}}
+\caption{实验设置与数据来源概览图}
+\label{fig:chapter4-experiment-overview}
+\end{figure}
+
+\section{静态攻击结果的总体特征}
+
+\subsection{整体成功率与风险分布特征}
+
+从三组静态实验的总体统计看，当前模型在统一测试集上的直接越狱成功率整体处于较低水平。按各模型全部静态样本汇总后计算，\texttt{deepseek-chat} 的总体成功率约为 1.92\%，\texttt{qwen2.5:1.5b} 约为 1.62\%，\texttt{qwen2.5:3b} 约为 1.86\%。这一结果表明，现有安全对齐与拒答机制在大量显式危险请求面前仍然发挥了基础性拦截作用，模型并非对所有攻击形式都呈现出大面积失守。
+
+然而，若仅据此得出“安全风险已较低”的结论，则显然过于乐观。与较低直接成功率并存的，是显著偏高的不确定样本占比。三组结果中，\texttt{deepseek-chat} 的总体不确定率约为 56.29\%，\texttt{qwen2.5:1.5b} 达到 72.37\%，\texttt{qwen2.5:3b} 则进一步上升至 80.61\%。这意味着在相当比例的样本中，模型并非表现为稳定、明确的安全拒答，而是生成了同时包含拒答语句、解释性内容或局部风险信号的边界性回复。换言之，模型安全边界虽然没有大规模崩溃，但其稳定性并不充分，仍存在明显的“模糊区域”。
+
+进一步结合高风险样本占比可以看出，当前静态实验中的高风险输出比例总体较低，三个模型的总体高风险占比仅约为 0.16\%、0.05\% 与 0.14\%。这说明在当前单轮静态场景下，多数突破样本尚未演化为大规模、持续性的高强度危险输出。但另一方面，高风险比例低并不意味着漏洞可以忽略。只要某些攻击维度能够跨模型稳定地产生高风险成功样本，就足以说明这些维度已经触及安全对齐的薄弱区域，其研究价值在于暴露系统边界，而非追求极高的总体命中率。
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{0.95}
+\caption{三模型总体结果汇总表}
+\begin{tabular}{p{0.18\textwidth}p{0.17\textwidth}p{0.17\textwidth}p{0.17\textwidth}}
+\toprule
+\textbf{指标} & \textbf{deepseek-chat} & \textbf{qwen2.5:1.5b} & \textbf{qwen2.5:3b} \\
+\midrule
+样本总数 & 6406 & 6406 & 6406 \\
+越狱成功率 & 1.92\% & 1.62\% & 1.86\% \\
+不确定率 & 56.29\% & 72.37\% & 80.61\% \\
+高风险占比 & 0.16\% & 0.05\% & 0.14\% \\
+95\% 置信区间 & [1.58\%, 2.26\%] & [1.31\%, 1.93\%] & [1.53\%, 2.19\%] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.98\textwidth}{!}{\input{figures/fig4-2-overall-results-bars.tex}}
+\caption{三模型总体结果对比柱状图}
+\label{fig:chapter4-overall-results}
+\end{figure}
+
+\subsection{跨模型共性脆弱性概览}
+
+从九类静态攻击维度的横向对比结果看，三模型在脆弱性排序上呈现出较为清晰的共性。认知误导类攻击在三个模型上均表现为最突出的攻击维度，其平均成功率约为 5.69\%，明显高于其他各类攻击；其中 \texttt{deepseek-chat}、\texttt{qwen2.5:1.5b} 与 \texttt{qwen2.5:3b} 分别达到 5.83\%、4.31\% 与 6.94\%。这一现象表明，当危险任务被包装为角色指令、危机推演、机制分析或假设性任务时，模型更容易偏向完成表面任务，从而弱化原有安全约束，这与已有关于 persuasion/role-play 型越狱的研究观察一致\cite{zeng2024johnny,qi2024quack}。
+
+位于第二梯队的是指令重构与上下文示例类攻击，其中 \texttt{dap} 分组表现尤为突出，平均成功率约为 2.50\%，且在 \texttt{qwen2.5:3b} 上达到 4.31\%。这说明当危险问题被置于连续问答链、示例前缀或任务序列内部时，模型的安全识别更容易受到整体任务结构的干扰，这与 PAIR、TAP 以及 many-shot jailbreaking 中关于结构化前缀和上下文组织会影响安全判断的发现相吻合\cite{chao2024pair,mehrotra2024tap,anil2024manyshot}。相比之下，编码扰动、低资源语言与部分格式伪装类攻击整体成功率较低，说明当前模型在纯表面变换层面仍保留一定鲁棒性。
+
+值得关注的是，虽然 \texttt{adversarial\_suffixes}、\texttt{tokenbreak}、\texttt{structural\_obfuscation} 等维度的直接成功率并不突出，但其在三个模型上的成功率均未完全消失，说明这些攻击并非偶发噪声，而是仍具有一定持续有效性。特别是当这类表面扰动与语义包装叠加时，其风险可能被进一步放大。因此，实验结果显示的并不是“只有单一维度有效”，而是不同攻击维度在突破深度和稳定性上存在差异，其中语义包装类最能揭示对齐漏洞，而输入扰动类则更多反映安全机制的表层鲁棒性边界。
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.98\textwidth}{!}{\input{figures/fig4-3-success-heatmap.tex}}
+\caption{攻击维度跨模型成功率热力图}
+\label{fig:chapter4-success-heatmap}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.98\textwidth}{!}{\input{figures/fig4-4-uncertainty-heatmap.tex}}
+\caption{攻击维度跨模型不确定率热力图}
+\label{fig:chapter4-uncertainty-heatmap}
+\end{figure}
+
+\section{不同攻击维度的脆弱性比较}
+
+\subsection{语义包装类攻击的突出作用}
+
+从三模型共同趋势看，语义包装类攻击是最值得重点关注的脆弱性来源。其中，\texttt{cognitive\_psychological} 分组在所有模型上均为最高成功率维度，同时也是少数在三个模型上均稳定出现高风险样本的分组。这一结果说明，安全对齐机制对显式危险意图的拦截能力相对较强，但当攻击者将原始目标嵌入角色扮演、危机指挥、机制复盘、剧情模拟或权威指令框架后，模型更容易将“完成任务叙述”置于“识别危险目标”之前\cite{zeng2024johnny,qi2024quack}。
+
+这一现象具有明显的机制含义。对于此类攻击，模型并非简单忽略安全规则，而是被重新引导去理解“当前任务是什么”。当任务被包装成分析、推演、协作或模拟时，模型往往优先匹配表面的任务语义，从而在“有用性”与“安全性”的冲突中偏向前者。因而，认知误导类攻击的价值并不只在于其成功率较高，更在于它稳定揭示了安全对齐的核心张力，即模型更擅长拒绝直接风险请求，却不一定擅长识别经复杂包装后的危险目标。
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.98\textwidth}{!}{\input{figures/fig4-5-semantic-attack-comparison.tex}}
+\caption{语义包装类攻击细分对比图}
+\label{fig:chapter4-semantic-comparison}
+\end{figure}
+
+\subsection{结构重构与上下文前缀的持续影响}
+
+除认知误导外，\texttt{dap} 与 \texttt{fsh} 两类分组也体现出较强的研究意义。虽然其直接成功率整体低于认知误导，但在多个模型上都保持了非零命中，并伴随较高比例的不确定样本。这说明通过示例前缀、问答链重构、任务序列包裹等方式组织输入，能够持续干扰模型对目标请求的独立安全判断。
+
+尤其值得注意的是，\texttt{dap} 在 \texttt{qwen2.5:3b} 上达到 4.31\% 的成功率，已接近部分认知误导样本的攻击强度。这表明安全问题并不仅仅存在于“说了什么”，也存在于“如何组织来说”。当危险请求被安排在一长串看似正常、连贯的问答示例之后，模型更容易沿着前文已建立的答题模式继续生成，从而削弱对最后一条危险请求的安全审查强度。该结果直接支持了第三章关于“指令结构改变会影响安全识别”的设计判断。
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.98\textwidth}{!}{\input{figures/fig4-6-dap-fsh-comparison.tex}}
+\caption{指令重构与上下文前缀攻击对比图}
+\label{fig:chapter4-dap-fsh}
+\end{figure}
+
+\subsection{表面扰动类攻击的边界意义}
+
+相较之下，编码扰动、ASCII Art、分词切分和低资源语言等表面扰动类攻击的直接成功率整体较低。例如 \texttt{low\_resource\_language} 在三个模型上的平均成功率仅约为 0.36\%，\texttt{encoding\_cyphering} 约为 0.83\%。从积极角度看，这说明当前模型对于纯表面形式变换已经具备一定鲁棒性，并不会因为简单的编码或翻译就大面积丧失安全判断能力；这一点与已有关于 ASCII Art、字符串组合和多语种越狱的研究中“表面变换有效但通常弱于深层语义包装”的结论基本一致\cite{jiang2024artprompt,huang2024plentiful,deng2024multilingual}。
+
+但这并不意味着这些维度没有研究价值。首先，这些维度的不确定率通常仍然较高，说明模型虽然未必给出明显危险输出，但其回复边界并不稳定。其次，这类攻击在安全研究中的作用更多体现为“边界探测”，即用于检测安全机制是否依赖特定词面模式。一旦模型在更复杂的攻击中同时遭遇语义误导与表面扰动，这些原本单独看似不强的攻击形式仍可能成为放大器。因此，本章将其视为静态评测中不可忽略的基础压力维度，而非简单归为“无效攻击”。
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.98\textwidth}{!}{\input{figures/fig4-7-surface-attack-comparison.tex}}
+\caption{表面扰动类攻击边界探测图}
+\label{fig:chapter4-surface-attacks}
+\end{figure}
+
+\section{风险等级分布与边界模糊性分析}
+
+\subsection{低直接成功率下的高不确定性特征}
+
+本组实验最值得重视的现象之一，是低直接成功率与高不确定率并存。若仅看 \texttt{yes} 样本占比，静态攻击的整体突破效果并不夸张；但若进一步纳入 \texttt{uncertain} 样本，则可以发现模型在大量场景下并未表现为坚决、稳定的安全拒答，而是输出了夹杂说明、局部细节、风险暗示或边界性信息的中间状态回复。
+
+从安全评估角度看，这一现象具有重要意义。首先，不确定样本反映的是模型边界松动，而不是严格意义上的“安全通过”。当攻击者继续优化提示、叠加上下文或转入多轮交互时，这些边界性回复很可能成为进一步突破的入口。其次，不确定样本的广泛存在说明当前安全对齐在很多情况下并不是“识别危险并明确拒绝”，而更像是在“部分理解危险后尝试折中回应”。这种折中式输出虽然比直接给出危险步骤更安全，但从系统安全角度看仍然意味着对齐约束缺乏足够的硬边界。
+
+为更紧凑地度量攻击维度的边界模糊性，本文定义边界模糊性指数如下：
+\begin{equation}
+\mathrm{BI}_g=\alpha \cdot \mathrm{UR}_g + (1-\alpha)\cdot \mathrm{ASR}_g
+\end{equation}
+其中，$\mathrm{UR}_g$ 表示攻击分组 $g$ 的不确定率，$\mathrm{ASR}_g$ 表示其越狱成功率，$\alpha$ 为权重系数。若取 $\alpha=0.5$，则该指标可视为对“明确突破”与“边界松动”两类风险信号的等权综合。
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.98\textwidth}{!}{\input{figures/fig4-8-success-uncertainty-scatter.tex}}
+\caption{攻击维度的成功率-不确定率散点图}
+\label{fig:chapter4-scatter}
+\end{figure}
+
+\subsection{高风险样本的分布特点}
+
+尽管高风险样本比例整体较低，但其分布并不随机。从三组结果看，高风险输出主要集中在 \texttt{cognitive\_psychological} 分组，少量出现在 \texttt{dap}、\texttt{adversarial\_suffixes}、\texttt{fsh} 与 \texttt{tokenbreak} 分组中。特别是认知误导类攻击不仅成功率最高，而且在三个模型上都能稳定产生高风险样本，这说明其不仅容易突破拒答机制，而且一旦突破，更可能生成具有可操作性的危险内容。
+
+这一分布特征进一步说明，真正需要重点防御的并不是所有攻击维度，而是那些能够同时体现“跨模型稳定性”和“高风险输出能力”的攻击路径。对于只偶尔产生低风险偏移的维度，可以更多从鲁棒性改进入手；而对于能够诱导模型输出明确高风险内容的维度，则必须视为安全对齐中的关键漏洞来源\cite{zeng2024johnny,chao2024pair}。
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.98\textwidth}{!}{\input{figures/fig4-9-risk-distribution.tex}}
+\caption{高风险样本分布图}
+\label{fig:chapter4-risk-distribution}
+\end{figure}
+
+\section{典型案例分析}
+
+\subsection{认知误导样本揭示的任务解释偏移}
+
+代表性案例显示，认知误导类成功样本通常并不以直接命令形式出现，而是以“战争室危机处置”“渗透演练剧情”“角色任务推演”等形式包装危险请求。例如，在三个模型的代表性样本中，均可观察到将网络入侵、权限提升或凭证窃取任务嵌入危机响应、战术分析或虚构行动日志中的提示结构。这类提示往往先建立高度具体的场景背景，再以角色身份和任务紧迫性弱化原始危险目标的显式性。
+
+从模型回复模式看，一旦接受了这一叙事框架，模型便更倾向于沿着设定继续完成任务，而不是回到安全边界进行重新审查。换言之，攻击成功的关键不在于让模型“忘记规则”，而在于让模型“重新定义任务”。这一现象直接支持了本文关于目标冲突与任务解释偏移的判断。
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{0.95}
+\caption{认知误导典型案例对比表}
+\begin{tabular}{p{0.11\textwidth}p{0.21\textwidth}p{0.19\textwidth}p{0.14\textwidth}p{0.21\textwidth}}
+\toprule
+\textbf{案例编号} & \textbf{攻击包装方式} & \textbf{模型回复特征} & \textbf{最终判定} & \textbf{建议标注点} \\
+\midrule
+Case-1 & 将高风险任务包装为危机处置或战术协作情境 & 回复延续任务叙述，并出现局部操作性内容或可执行方向 & yes / 风险3 & 任务解释偏移、角色一致性优先 \\
+Case-2 & 将敏感目标包装为机制分析、复盘说明或虚构行动日志 & 表面保留解释性语气，但仍输出与危险目标相关的关键步骤线索 & yes 或 uncertain / 风险2--3 & 语义包装削弱安全审查、分析口吻掩盖风险 \\
+\bottomrule
+\end{tabular}
+\end{table}
+\noindent\textbf{附注：}此表建议不要直接放原始危险文本，可用抽象标签或局部脱敏片段替代。
+
+\subsection{示例链与结构化前缀的诱导效应}
+
+另一类典型样本来自 \texttt{dap} 与 \texttt{fsh} 分组，其共同特征是在最终危险问题之前加入多组正常问答示例或知识性前缀。表面上看，这类提示并未直接包含强烈的角色设定或情绪化包装，但其危险之处在于通过连续的问答节奏为模型建立了稳定的回答惯性。特别是在 \texttt{qwen2.5:3b} 的代表性样本中，可以观察到模型在长串正常问答之后，对嵌入其中的危险问题延续了前文“继续作答”的模式，从而出现安全边界下移。
+
+这一现象表明，对齐失效不仅来源于危险语义的伪装，也来源于任务流程本身的操控。当模型被放入连续任务链条中时，它可能将自身主要目标理解为“保持上下文连贯”，而不是“对每个子任务单独进行安全校验”。这正是静态单轮实验中“上下文操控仍然有效”的原因\cite{anil2024manyshot,chao2024pair}。
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.98\textwidth}{!}{\input{figures/fig4-10-chain-induction-flow.tex}}
+\caption{示例链诱导案例流程图}
+\label{fig:chapter4-chain-induction}
+\end{figure}
+
+\subsection{低成功维度中的残余鲁棒性}
+
+与此同时，低资源语言、编码变换和部分格式伪装维度的代表性样本表明，当前模型在若干表面扰动场景下仍具备一定残余鲁棒性。许多此类样本最终表现为不确定或明确拒答，说明模型在面对纯形式变化时，尚能在一定程度上恢复原始危险目标并触发安全机制。尤其在低资源语言维度中，三个模型虽然都存在极高不确定率，但直接成功率始终维持在较低水平，显示其跨语言安全性虽然不稳，但并未出现大面积系统性崩溃。
+
+这一点同样具有研究意义。它说明现有安全对齐并非完全失效，而是呈现出“对表层扰动相对稳健、对复杂语义包装更脆弱”的结构性特征。正因为模型并非在所有攻击面上都同样脆弱，本文才更能够从实验中识别出真正关键的漏洞类型\cite{jiang2024artprompt,deng2024multilingual,zeng2024johnny}。
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.98\textwidth}{!}{\input{figures/fig4-11-vulnerability-layering.tex}}
+\caption{不同攻击面脆弱性分层图}
+\label{fig:chapter4-vulnerability-layering}
+\end{figure}
+
+\section{自动化红队生成的补充实验结果}
+
+目前自动化红队模块的完整补充实验结果尚未纳入 \texttt{Results/final} 的统一分析目录，因此本节暂不进行实证结论展开。为完成本节分析，至少需要补充以下数据：第一，自动化红队生成样本的统一结果文件，包括样本原始目标、生成变体编号、攻击提示、模型回复与最终判定结果；第二，与静态攻击一致的聚合统计文件，如按攻击来源或生成策略分组的 \texttt{group\_metrics.csv}；第三，代表性成功与失败案例，以支持对自动生成攻击多样性和隐蔽性的定性分析。
+
+在上述数据完备后，本节建议重点回答三个问题：其一，自动化生成攻击相较静态人工样本是否能够显著提升某些攻击维度的命中率；其二，自动化生成是否主要放大既有高脆弱维度，还是能够打开新的攻击空间；其三，自动化变体的表达多样性是否会使不确定样本进一步增加，从而说明模型边界在动态改写条件下更加不稳定。
+
+\section{多轮交互攻击的补充实验结果}
+
+同样地，多轮交互模块的完整实验结果尚未在本章对应的数据目录下形成统一汇总，因此目前仅保留分析框架与数据需求说明。为完成本节写作，至少需要补充以下数据：第一，多轮实验的统一 \texttt{records.csv} 与 \texttt{multi\_turn\_round\_metrics.csv}，以提供首次成功轮次、累计成功率和各轮响应状态；第二，若干具有代表性的完整交互轨迹，以便分析攻击者如何通过阶段化追问和策略调整逐步削弱安全边界；第三，与单轮静态实验可对照的统一判定口径，确保多轮结果能够与前文静态结果进行合理比较。
+
+当上述结果补齐后，本节可重点讨论两个方向：一是静态实验中的高不确定样本是否会在多轮交互中进一步转化为明确成功样本；二是上下文累积与策略迭代是否会显著放大本文在静态实验中已经观察到的语义包装漏洞。若结果显示多轮场景中首次成功轮次明显前移或累计成功率显著上升，则可进一步证明当前安全对齐在过程性攻击面前存在更强的脆弱性。
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.98\textwidth}{!}{\input{figures/fig4-12-redteam-readiness.tex}}
+\caption{自动化红队结果补充框架图}
+\label{fig:chapter4-redteam-readiness}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.98\textwidth}{!}{\input{figures/fig4-13-multiturn-readiness.tex}}
+\caption{多轮交互累计成功率指标框架图}
+\label{fig:chapter4-multiturn-readiness}
+\end{figure}
+
+\section{对齐失效机理讨论}
+
+\subsection{目标冲突导致的脆弱性暴露}
+
+第四章静态实验最清晰的结论之一，是认知误导和结构重构类攻击在多个模型上均表现出更高的突破能力。这说明模型在复杂任务包装条件下，确实会表现出明显的目标冲突：一方面，模型倾向于完成当前被设定为“合理”的任务；另一方面，安全机制又要求其识别并阻断潜在危险目标。当两者发生张力时，模型并未总是优先坚持安全边界，而是可能向“完成任务”一侧偏移。
+
+\subsection{表层对齐的泛化局限}
+
+编码扰动、对抗后缀、结构伪装与分词切分类攻击虽然总体成功率不高，但始终保持非零命中且伴随较高不确定率，这表明模型安全约束仍在一定程度上依赖输入形式与熟悉表达模式。换言之，模型更擅长在已见过的典型危险表述上执行拒答，而在面对新的外观形式或组合式扰动时，安全判断会出现边界模糊。该现象说明当前对齐机制在分布变化条件下仍具有明显的泛化局限\cite{zou2023universal,jiang2024artprompt,huang2024plentiful}。
+
+\subsection{上下文依赖与过程脆弱性的静态显现}
+
+尽管本章尚未正式展开多轮结果分析，但静态实验中的 \texttt{dap}、\texttt{fsh} 及部分复合提示已经显示出上下文组织方式对安全判断的显著影响。即使在单轮输入中，只要攻击者通过长前缀、示例链或连续任务结构重新塑造局部语境，模型就可能表现出边界松动。这意味着第二章中所分析的上下文依赖问题并非仅存在于多轮交互中，而是在静态单轮场景下就已能以“前缀诱导”的形式显现出来。
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.98\textwidth}{!}{\input{figures/fig4-14-findings-mechanism-map.tex}}
+\caption{实验发现与机理映射图}
+\label{fig:chapter4-findings-map}
+\end{figure}
+
+\section{本章小结}
+
+本章基于三个模型的统一静态实验结果，对多维越狱攻击框架下的安全对齐脆弱性进行了系统分析。结果表明，当前模型在直接危险请求面前仍保留一定基础防护能力，因此总体直接成功率不高；但与此同时，大量不确定样本和跨模型重复出现的高脆弱维度又说明，安全边界并不稳固。尤其是认知误导、指令重构与上下文前缀类攻击，在多个模型上都表现出更强的突破能力，揭示了安全对齐在任务解释、结构组织与语义包装条件下的系统性弱点。
+
+总体而言，本章的核心发现并不在于“哪一个模型更弱”，而在于不同模型在相近攻击维度上表现出相似的脆弱性分布。这说明本文所关注的问题更应被理解为大语言模型安全对齐中的共性漏洞，而非个别模型的偶发现象。自动化红队与多轮交互部分虽然尚待补充完整结果，但已有静态实验已经足以为下一章的分层防御设计提供明确的攻击面指引。

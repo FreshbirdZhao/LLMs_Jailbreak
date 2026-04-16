@@ -1,0 +1,15 @@
+\begin{tikzpicture}[
+    x=1pt,y=1pt,font=\small,>=stealth,
+    block/.style={draw=#1!75!black, fill=#1!12, rounded corners=9pt, line width=0.9pt, align=center},
+    flow/.style={->, line width=0.95pt, draw=gray!75}
+]
+\node[block=blue, minimum width=106pt, minimum height=38pt] (seed) at (96,94) {\textbf{种子样本}\\original\_prompt};
+\node[block=orange, minimum width=106pt, minimum height=38pt] (variant) at (248,94) {\textbf{自动生成变体}\\variant\_index};
+\node[block=teal, minimum width=106pt, minimum height=38pt] (judge) at (400,94) {\textbf{统一判定}\\records / metrics};
+\node[block=red, minimum width=106pt, minimum height=38pt] (compare) at (552,94) {\textbf{静态 vs 红队}\\成功率 / 不确定率};
+\draw[flow] (seed.east) -- (variant.west);
+\draw[flow] (variant.east) -- (judge.west);
+\draw[flow] (judge.east) -- (compare.west);
+\node[anchor=west, font=\bfseries\small] at (18,156) {自动化红队结果补充框架图};
+\node[anchor=west, font=\scriptsize, text=gray!70!black] at (18,28) {当前用于说明待补数据依赖关系, 不将未完成实验伪装为结果图};
+\end{tikzpicture}

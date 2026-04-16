@@ -1,0 +1,30 @@
+\begin{tikzpicture}
+\begin{axis}[
+    width=720pt,
+    height=255pt,
+    ybar,
+    bar width=11pt,
+    ymin=0,ymax=100,
+    ylabel={比例（\%）},
+    symbolic x coords={编码变换,分词切分,低资源语言,格式伪装},
+    xtick=data,
+    ymajorgrids=true,
+    grid style={gray!20},
+    legend style={at={(0.5,1.02)}, anchor=south, legend columns=2, draw=none, fill=none},
+    enlarge x limits=0.24,
+]
+\addplot[fill=blue!55, draw=blue!75!black] coordinates {
+    (编码变换,0.83)
+    (分词切分,1.06)
+    (低资源语言,0.36)
+    (格式伪装,1.06)
+};
+\addplot[fill=orange!65, draw=orange!80!black] coordinates {
+    (编码变换,69.07)
+    (分词切分,56.85)
+    (低资源语言,93.34)
+    (格式伪装,59.54)
+};
+\legend{平均成功率,平均不确定率}
+\end{axis}
+\end{tikzpicture}

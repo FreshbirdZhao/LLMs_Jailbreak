@@ -1,0 +1,24 @@
+\begin{tikzpicture}
+\begin{axis}[
+    width=720pt,
+    height=265pt,
+    xmin=0,xmax=8,
+    ymin=0,ymax=100,
+    xlabel={越狱成功率（\%）},
+    ylabel={不确定率（\%）},
+    grid=both,
+    grid style={gray!18},
+    legend style={at={(0.5,1.02)}, anchor=south, legend columns=3, draw=none, fill=none},
+]
+\addplot[only marks, mark=*, mark size=2.8pt, blue!75!black] coordinates {
+    (5.83,59.17) (1.39,45.97) (1.53,39.03) (1.81,65.00) (0.83,45.00) (0.31,97.68) (0.97,17.92) (1.25,45.97) (3.19,95.14)
+};
+\addplot[only marks, mark=square*, mark size=2.8pt, orange!85!black] coordinates {
+    (4.31,85.97) (1.81,90.83) (1.11,68.75) (0.14,57.78) (1.11,53.33) (0.62,86.38) (1.53,84.44) (1.39,50.83) (2.50,74.44)
+};
+\addplot[only marks, mark=triangle*, mark size=3pt, teal!80!black] coordinates {
+    (6.94,84.03) (4.31,88.33) (0.56,66.67) (0.56,84.44) (1.25,72.22) (0.15,95.98) (0.69,76.25) (1.94,65.00) (0.14,94.17)
+};
+\legend{deepseek-chat,qwen2.5:1.5b,qwen2.5:3b}
+\end{axis}
+\end{tikzpicture}

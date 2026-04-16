@@ -1,0 +1,44 @@
+\begin{tikzpicture}[
+    x=1pt,y=1pt,font=\small,
+    cell/.style={minimum width=108pt, minimum height=26pt, draw=white, align=center, font=\scriptsize},
+    rowlab/.style={anchor=east, font=\scriptsize},
+    collab/.style={font=\scriptsize\bfseries}
+]
+\def\xo{164}
+\def\yo{28}
+\node[collab] at (250,220) {deepseek-chat};
+\node[collab] at (360,220) {qwen2.5:1.5b};
+\node[collab] at (470,220) {qwen2.5:3b};
+\node[rowlab] at (145,194) {cognitive\_psychological};
+\node[rowlab] at (145,166) {dap};
+\node[rowlab] at (145,138) {ascii\_art};
+\node[rowlab] at (145,110) {adversarial\_suffixes};
+\node[rowlab] at (145,82) {fsh};
+\node[rowlab] at (145,54) {structural\_obfuscation};
+\node[rowlab] at (145,26) {encoding\_cyphering};
+
+\node[cell, fill=blue!58] at (250,194) {5.83\%};
+\node[cell, fill=blue!44] at (360,194) {4.31\%};
+\node[cell, fill=blue!68] at (470,194) {6.94\%};
+\node[cell, fill=blue!22] at (250,166) {1.39\%};
+\node[cell, fill=blue!26] at (360,166) {1.81\%};
+\node[cell, fill=blue!44] at (470,166) {4.31\%};
+\node[cell, fill=blue!32] at (250,138) {3.19\%};
+\node[cell, fill=blue!28] at (360,138) {2.50\%};
+\node[cell, fill=blue!10] at (470,138) {0.14\%};
+\node[cell, fill=blue!20] at (250,110) {1.25\%};
+\node[cell, fill=blue!22] at (360,110) {1.39\%};
+\node[cell, fill=blue!28] at (470,110) {1.94\%};
+\node[cell, fill=blue!22] at (250,82) {1.53\%};
+\node[cell, fill=blue!18] at (360,82) {1.11\%};
+\node[cell, fill=blue!12] at (470,82) {0.56\%};
+\node[cell, fill=blue!16] at (250,54) {0.97\%};
+\node[cell, fill=blue!22] at (360,54) {1.53\%};
+\node[cell, fill=blue!14] at (470,54) {0.69\%};
+\node[cell, fill=blue!24] at (250,26) {1.81\%};
+\node[cell, fill=blue!10] at (360,26) {0.14\%};
+\node[cell, fill=blue!12] at (470,26) {0.56\%};
+
+\node[anchor=west, font=\bfseries\small] at (36,242) {攻击维度跨模型成功率热力图};
+\node[anchor=west, font=\scriptsize, text=gray!70!black] at (36,10) {颜色越深表示越狱成功率越高};
+\end{tikzpicture}

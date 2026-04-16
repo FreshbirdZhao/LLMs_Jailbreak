@@ -1,0 +1,49 @@
+%% Bachelor Thesis Template of Wuhan Uniersity
+%%
+%% Created by Fing. 
+%% Modified by Weifeng Liu (AaronComo).
+%% Github: https://github.com/AaronComo/WHU-Bachelor-Thesis-Template
+
+
+
+\documentclass[article]{whu-bachelor-style}
+\usepackage{float}
+\usepackage{enumitem}
+\usepackage{multirow}
+
+\begin{document}
+%%----------- 封面部分 ----------- %%
+  \ctitle{大语言模型安全对齐漏洞的越狱攻击研究}
+  \cschool{国家网络安全学院}
+  \cmajor{信息安全专业}
+  \cauthor{赵国栋}
+  \cnumber{2022302181155}
+  \cadvisor{严飞}
+  \cdate{二〇二六年三月}
+
+  \maketitlepage            % 封面
+  \makestatement            % 申明
+
+%%----------- 前言部分 ----------- %%
+  \include{pages/abstract}  % 摘要
+  \makecontents             % 目录
+
+%%----------- 主体部分 ----------- %%
+  \include{pages/chapter1}
+  \include{pages/chapter2}
+  \include{pages/chapter3}
+  \include{pages/chapter4}
+  \include{pages/chapter5}
+  \include{pages/chapter6}
+
+%%----------- 结尾部分 ----------- %%
+  \clearpage
+  \phantomsection
+  \addcontentsline{toc}{chapter}{参考文献}
+  \bibliography{ref/refs}   % 参考文献
+
+  \include{pages/thanks}    % 致谢
+  \include{pages/null}      % 封底空白页
+     
+
+\end{document}

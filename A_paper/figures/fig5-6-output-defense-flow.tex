@@ -1,0 +1,16 @@
+\begin{tikzpicture}[
+    x=1pt,y=1pt,font=\small,>=stealth,
+    block/.style={draw=#1!75!black, fill=#1!12, rounded corners=9pt, line width=0.9pt, align=center},
+    flow/.style={->, line width=0.95pt, draw=gray!75}
+]
+\node[block=gray, minimum width=100pt, minimum height=34pt] (raw) at (84,92) {\textbf{模型原始回复}};
+\node[block=blue, minimum width=110pt, minimum height=34pt] (detect) at (236,92) {\textbf{危险内容检测}};
+\node[block=orange, minimum width=110pt, minimum height=34pt] (enhance) at (388,92) {\textbf{上下文增强判断}};
+\node[block=red, minimum width=118pt, minimum height=42pt] (act) at (554,92) {\textbf{动作输出}\\allow / redact / replace};
+\node[block=teal, minimum width=96pt, minimum height=34pt] (audit) at (690,92) {\textbf{审计写入}};
+\draw[flow] (raw.east) -- (detect.west);
+\draw[flow] (detect.east) -- (enhance.west);
+\draw[flow] (enhance.east) -- (act.west);
+\draw[flow] (act.east) -- (audit.west);
+\node[anchor=west, font=\bfseries\small] at (18,154) {输出层内容安全兜底图};
+\end{tikzpicture}

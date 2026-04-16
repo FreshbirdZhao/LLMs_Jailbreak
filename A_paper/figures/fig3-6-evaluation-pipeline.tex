@@ -1,0 +1,33 @@
+\begin{tikzpicture}[
+    x=1pt,
+    y=1pt,
+    font=\small,
+    >=stealth,
+    panel/.style={draw=gray!35, rounded corners=14pt, fill=gray!4, line width=1pt},
+    block/.style={draw=#1!75!black, fill=#1!12, rounded corners=9pt, line width=0.9pt, align=center},
+    flow/.style={->, line width=0.95pt, draw=gray!75}
+]
+\def\W{742}
+\def\H{248}
+\fill[gray!4, rounded corners=16pt] (0,0) rectangle (\W,\H);
+\draw[gray!35, rounded corners=16pt, line width=1pt] (0,0) rectangle (\W,\H);
+\fill[cyan!18, rounded corners=14pt] (18,206) rectangle (724,234);
+\node[anchor=west, font=\bfseries\small] at (34,220) {统一实验流程图};
+\node[anchor=east, font=\scriptsize, text=gray!70!black] at (706,220) {单轮静态实验与离线分析共用同一评估链路};
+
+\node[block=blue, minimum width=92pt, minimum height=34pt] (loader) at (90,118) {\textbf{Loader}\\字段标准化};
+\node[block=orange, minimum width=92pt, minimum height=34pt] (single) at (216,118) {\textbf{single\_jail.py}\\模型调用};
+\node[block=teal, minimum width=92pt, minimum height=34pt] (judge) at (342,118) {\textbf{NonRefusalJudge}\\在线初判};
+\node[block=green, minimum width=92pt, minimum height=34pt] (review) at (468,118) {\textbf{离线复核}\\keyword / llm / hybrid};
+\node[block=red, minimum width=92pt, minimum height=34pt] (metrics) at (594,118) {\textbf{聚合分析}\\records / metrics};
+
+\draw[flow] (loader.east) -- (single.west);
+\draw[flow] (single.east) -- (judge.west);
+\draw[flow] (judge.east) -- (review.west);
+\draw[flow] (review.east) -- (metrics.west);
+
+\draw[panel] (44,34) rectangle (638,74);
+\node[anchor=west, font=\scriptsize] at (60,54) {输入文件: CSV / JSON / YAML \hspace{14pt} 输出文件: \texttt{records.csv}, \texttt{group\_metrics.csv}};
+\node[block=brown, minimum width=82pt, minimum height=28pt] (ind) at (678,54) {\textbf{评估指标}\\ASR / UR / HR};
+\draw[flow] (metrics.east) -- (ind.west);
+\end{tikzpicture}

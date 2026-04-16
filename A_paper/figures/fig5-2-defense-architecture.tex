@@ -1,0 +1,22 @@
+\begin{tikzpicture}[
+    x=1pt,y=1pt,font=\small,>=stealth,
+    panel/.style={draw=gray!35, rounded corners=14pt, fill=gray!4, line width=1pt},
+    block/.style={draw=#1!75!black, fill=#1!12, rounded corners=9pt, line width=0.9pt, align=center},
+    flow/.style={->, line width=0.95pt, draw=gray!75}
+]
+\draw[panel] (20,34) rectangle (716,210);
+\node[block=gray, minimum width=92pt, minimum height=34pt] (user) at (78,122) {\textbf{用户输入}};
+\node[block=blue, minimum width=118pt, minimum height=54pt] (in) at (218,122) {\textbf{输入层防御}\\规则匹配\\分类打分};
+\node[block=teal, minimum width=118pt, minimum height=54pt] (mid) at (388,122) {\textbf{交互层防御}\\状态跟踪\\风险累积};
+\node[block=red, minimum width=118pt, minimum height=54pt] (out) at (558,122) {\textbf{输出层防御}\\内容复核\\替换与脱敏};
+\node[block=gray, minimum width=92pt, minimum height=34pt] (reply) at (680,122) {\textbf{最终回复}};
+\draw[flow] (user.east) -- (in.west);
+\draw[flow] (in.east) -- (mid.west);
+\draw[flow] (mid.east) -- (out.west);
+\draw[flow] (out.east) -- (reply.west);
+\node[block=orange, minimum width=150pt, minimum height=30pt] (ctx) at (388,62) {\textbf{统一风险上下文}：样本、轮次、标签、动作历史};
+\draw[flow] (in.south) -- (ctx.north west);
+\draw[flow] (mid.south) -- (ctx.north);
+\draw[flow] (out.south) -- (ctx.north east);
+\node[anchor=west, font=\bfseries\small] at (30,224) {三层防御总体架构图};
+\end{tikzpicture}

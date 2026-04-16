@@ -1,0 +1,53 @@
+\begin{tikzpicture}[
+    x=1pt,
+    y=1pt,
+    font=\small,
+    >=stealth,
+    panel/.style={draw=gray!40, rounded corners=14pt, fill=gray!4, line width=1pt},
+    block/.style={draw=#1!75!black, fill=#1!11, rounded corners=9pt, line width=0.9pt, align=center},
+    tag/.style={draw=#1!70!black, fill=white, rounded corners=6pt, line width=0.8pt, inner xsep=6pt, inner ysep=3pt, font=\scriptsize},
+    flow/.style={->, line width=0.95pt, draw=gray!75},
+    auxflow/.style={->, line width=0.85pt, draw=teal!70!black, dashed}
+]
+\def\W{730}
+\def\H{268}
+\fill[gray!4, rounded corners=16pt] (0,0) rectangle (\W,\H);
+\draw[gray!35, rounded corners=16pt, line width=1pt] (0,0) rectangle (\W,\H);
+\fill[cyan!18, rounded corners=14pt] (18,220) rectangle (712,250);
+\node[anchor=west, font=\bfseries\small] at (34,235) {Safety Alignment Architecture};
+\node[anchor=east, font=\scriptsize, text=gray!70!black] at (694,235) {internal alignment + external safeguards + continuous evaluation};
+
+\draw[panel] (46,36) rectangle (548,192);
+\node[anchor=west, font=\bfseries\scriptsize, text=blue!60!black] at (62,176) {内部对齐路径};
+
+\node[block=gray, minimum width=132pt, minimum height=40pt] (pretrain) at (296,145) {\textbf{预训练模型}\\基础语言能力};
+\node[block=blue, minimum width=110pt, minimum height=50pt] (sft) at (132,92) {\textbf{SFT}\\监督微调\\安全响应模式};
+\node[block=teal, minimum width=110pt, minimum height=50pt] (rlhf) at (296,92) {\textbf{RLHF}\\奖励建模\\偏好优化};
+\node[block=orange, minimum width=110pt, minimum height=50pt] (dpo) at (460,92) {\textbf{DPO}\\直接偏好优化\\分布调整};
+\node[tag=blue] at (132,53) {训练阶段};
+\node[tag=teal] at (296,53) {偏好校正};
+\node[tag=orange] at (460,53) {稳定优化};
+
+\draw[flow] (pretrain.south west) -- (sft.north);
+\draw[flow] (pretrain.south) -- (rlhf.north);
+\draw[flow] (pretrain.south east) -- (dpo.north);
+
+\draw[panel] (566,36) rectangle (684,192);
+\node[anchor=west, font=\bfseries\scriptsize, text=red!60!black] at (578,176) {外部防护机制};
+\node[block=red, minimum width=86pt, minimum height=28pt] (inputf) at (625,145) {\textbf{输入过滤}};
+\node[block=violet, minimum width=86pt, minimum height=28pt] (rewrite) at (625,111) {\textbf{提示重写}};
+\node[block=magenta, minimum width=86pt, minimum height=28pt] (audit) at (625,77) {\textbf{输出审查}};
+\node[block=brown, minimum width=86pt, minimum height=28pt] (redteam) at (625,43) {\textbf{红队测试}};
+
+\node[block=cyan, minimum width=168pt, minimum height=32pt] (deploy) at (296,18) {\textbf{部署阶段模型服务}};
+\draw[flow] (sft.south) -- (deploy.north west);
+\draw[flow] (rlhf.south) -- (deploy.north);
+\draw[flow] (dpo.south) -- (deploy.north east);
+
+\draw[auxflow] (deploy.east) .. controls (420,18) and (560,145) .. (inputf.west);
+\draw[auxflow] (deploy.east) .. controls (430,24) and (560,111) .. (rewrite.west);
+\draw[auxflow] (deploy.east) .. controls (430,30) and (560,77) .. (audit.west);
+\draw[auxflow] (redteam.west) .. controls (540,43) and (520,164) .. node[pos=0.45, above, font=\scriptsize, text=gray!70!black] {评估反馈} (pretrain.east);
+
+\node[font=\scriptsize, text=gray!75!black, align=left] at (170,18) {协同关系: 内部训练塑造行为边界, 外部机制在部署时进行二次约束};
+\end{tikzpicture}

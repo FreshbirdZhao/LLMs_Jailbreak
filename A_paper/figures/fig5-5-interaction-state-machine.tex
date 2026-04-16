@@ -1,0 +1,15 @@
+\begin{tikzpicture}[
+    x=1pt,y=1pt,font=\small,>=stealth,
+    state/.style={draw=#1!75!black, fill=#1!12, rounded corners=18pt, line width=1pt, align=center, minimum width=92pt, minimum height=42pt},
+    flow/.style={->, line width=0.95pt, draw=gray!75}
+]
+\node[state=blue] (s1) at (96,92) {\textbf{正常}};
+\node[state=orange] (s2) at (262,92) {\textbf{预警}};
+\node[state=teal] (s3) at (428,92) {\textbf{受限}};
+\node[state=red] (s4) at (594,92) {\textbf{阻断}};
+\draw[flow] (s1.east) -- node[above, font=\scriptsize] {$R_t>\tau_1$} (s2.west);
+\draw[flow] (s2.east) -- node[above, font=\scriptsize] {$R_t>\tau_2$} (s3.west);
+\draw[flow] (s3.east) -- node[above, font=\scriptsize] {$R_t>\tau_3$} (s4.west);
+\draw[flow] (s2.south) .. controls (262,36) and (96,36) .. node[below, font=\scriptsize] {风险回落} (s1.south);
+\node[anchor=west, font=\bfseries\small] at (18,154) {交互层过程控制图};
+\end{tikzpicture}
