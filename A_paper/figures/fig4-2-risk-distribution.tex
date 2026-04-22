@@ -1,0 +1,41 @@
+\begin{tikzpicture}
+\begin{axis}[
+    width=0.82\linewidth,
+    height=170pt,
+    ybar stacked,
+    bar width=11pt,
+    ymin=0,
+    ymax=100,
+    ylabel={比例（\%）},
+    ylabel style={font=\footnotesize},
+    symbolic x coords={认知误导,指令重构,格式伪装,上下文操控,对抗后缀,分词切分,编码扰动,低资源语言,ASCII伪装},
+    xtick=data,
+    x tick label style={rotate=30, anchor=east, font=\footnotesize, yshift=-5pt},
+    y tick label style={font=\footnotesize},
+    ymajorgrids=true,
+    grid style={gray!18, thin},
+    axis line style={gray!50, thin},
+    tick style={gray!50, thin},
+    legend style={at={(0.5,1.08)}, anchor=south, legend columns=3,
+                  draw=none, fill=none, font=\footnotesize,
+                  /tikz/every even column/.append style={column sep=1em}},
+    legend image code/.code={%
+        \draw[draw=black!75, line width=0.5pt, fill=#1]
+            (0cm,-0.10cm) rectangle (0.20cm,0.10cm);},
+    enlarge x limits=0.08,
+]
+\addplot[fill=red!55, draw=black!75, line width=0.5pt] coordinates {
+    (认知误导,12.64) (指令重构,1.48) (格式伪装,1.06) (上下文操控,0.74)
+    (对抗后缀,0.37) (分词切分,0.32) (编码扰动,0.19) (低资源语言,0.05) (ASCII伪装,0.05)
+};
+\addplot[fill=orange!55, draw=black!75, line width=0.5pt] coordinates {
+    (认知误导,66.06) (指令重构,73.89) (格式伪装,57.36) (上下文操控,55.97)
+    (对抗后缀,51.85) (分词切分,55.23) (编码扰动,67.64) (低资源语言,93.34) (ASCII伪装,88.66)
+};
+\addplot[fill=blue!25, draw=black!75, line width=0.5pt] coordinates {
+    (认知误导,21.30) (指令重构,24.63) (格式伪装,41.58) (上下文操控,43.29)
+    (对抗后缀,47.78) (分词切分,44.45) (编码扰动,32.17) (低资源语言,6.61) (ASCII伪装,11.29)
+};
+\legend{显式成功,边界模糊,明确拒绝{/}安全响应}
+\end{axis}
+\end{tikzpicture}

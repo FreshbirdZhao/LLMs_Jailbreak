@@ -5,13 +5,21 @@ from typing import Any
 
 import yaml
 
+DEFAULT_ENABLED_LAYERS = ["input", "interaction", "output"]
+DEFAULT_INPUT_CONFIG = {"block_threshold": 65, "rewrite_threshold": 25}
+DEFAULT_INTERACTION_CONFIG = {"block_risk": 65, "warning_risk": 30, "max_round": 3}
+DEFAULT_OUTPUT_CONFIG = {
+    "archive_path": "Jailbreak/jailbreak_results/defense_audit.jsonl",
+    "archive_format": "jsonl",
+}
+
 
 def load_defense_config(path: str | None) -> dict[str, Any]:
     defaults: dict[str, Any] = {
-        "enabled_layers": ["input", "interaction", "output"],
-        "input": {"block_threshold": 80, "rewrite_threshold": 40},
-        "interaction": {"block_risk": 80, "warning_risk": 40, "max_round": 3},
-        "output": {"archive_path": "Jailbreak/jailbreak_results/defense_audit.jsonl", "archive_format": "jsonl"},
+        "enabled_layers": list(DEFAULT_ENABLED_LAYERS),
+        "input": dict(DEFAULT_INPUT_CONFIG),
+        "interaction": dict(DEFAULT_INTERACTION_CONFIG),
+        "output": dict(DEFAULT_OUTPUT_CONFIG),
     }
     if not path:
         return defaults
@@ -29,4 +37,3 @@ def load_defense_config(path: str | None) -> dict[str, Any]:
         else:
             defaults[k] = v
     return defaults
-

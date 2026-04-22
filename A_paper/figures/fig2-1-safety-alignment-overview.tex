@@ -1,0 +1,91 @@
+\begin{tikzpicture}[
+    x=1pt, y=1pt,
+    font=\normalsize,
+    >=stealth,
+    % 直角矩形节点
+    mbox/.style={draw=black, fill=white, rectangle,
+                 line width=0.8pt, align=center, inner sep=6pt},
+    ebox/.style={draw=black, fill=white, rectangle,
+                 line width=0.8pt, align=center, inner sep=5pt,
+                 minimum width=168pt, minimum height=24pt},
+    % 实线箭头（左侧面板内部流程）
+    sarrow/.style={->, line width=0.8pt, draw=black,
+                   shorten >=2pt, shorten <=2pt},
+    % 虚线箭头（跨面板连接）
+    darrow/.style={->, line width=0.8pt, draw=black,
+                   dashed, shorten >=2pt, shorten <=2pt},
+]
+
+% ════════════════════════════════════════════════════════════════════
+%  LEFT PANEL  (x: 4–298, y: 14–258)
+%  内部节点 x 范围：sft[21,99] rlhf[112,190] dpo[203,281] pretrain/deploy[81,221]
+% ════════════════════════════════════════════════════════════════════
+\draw[line width=0.8pt] (4, 42) rectangle (298, 258);
+\node[anchor=west, font=\bfseries\small] at (14, 243) {训练阶段内部对齐};
+
+\node[mbox, minimum width=120pt, minimum height=24pt]
+    (pretrain) at (151, 210)
+    {\textbf{预训练模型}\enspace{\small 基础语言能力}};
+
+\node[mbox, minimum width=78pt, minimum height=48pt]
+    (sft) at (60, 152)
+    {\textbf{SFT}\\[2pt]\small 有监督微调\\\small 安全响应模式};
+
+\node[mbox, minimum width=78pt, minimum height=48pt]
+    (rlhf) at (151, 152)
+    {\textbf{RLHF}\\[2pt]\small 奖励建模\\\small 偏好优化};
+
+\node[mbox, minimum width=78pt, minimum height=48pt]
+    (dpo) at (242, 152)
+    {\textbf{DPO}\\[2pt]\small 直接偏好优化\\\small 分布调整};
+
+\node[mbox, minimum width=140pt, minimum height=24pt]
+    (deploy) at (151, 68)
+    {\textbf{对齐后模型服务}\enspace{\small 部署阶段}};
+
+% pretrain → 三种对齐方法
+% 中间点 (151,202) 在 pretrain.south 下方 8pt，y=202 处各框均不存在
+\draw[sarrow] (pretrain.south) -- ++(0,-8) -| (sft.north);
+\draw[sarrow] (pretrain.south)             -- (rlhf.north);
+\draw[sarrow] (pretrain.south) -- ++(0,-8) -| (dpo.north);
+
+% 三种对齐方法 → deploy
+% 中间点在各框 south 下方 8pt，y=120 处各框均不存在
+\draw[sarrow] (sft.south)  -- ++(0,-8) -| (deploy.north);
+\draw[sarrow] (rlhf.south)             -- (deploy.north);
+\draw[sarrow] (dpo.south)  -- ++(0,-8) -| (deploy.north);
+
+% ════════════════════════════════════════════════════════════════════
+%  RIGHT PANEL  (x: 308–506, y: 14–258)
+% ════════════════════════════════════════════════════════════════════
+\draw[line width=0.8pt] (308, 42) rectangle (506, 258);
+\node[anchor=west, font=\bfseries\small] at (318, 243) {部署阶段外部防护};
+
+\node[ebox] (inputf)  at (407, 213) {\textbf{输入过滤}\enspace{\small 识别恶意提示与注入}};
+\node[ebox] (rewrite) at (407, 175) {\textbf{提示重写}\enspace{\small 注入安全约束前缀}};
+\node[ebox] (audit)   at (407, 137) {\textbf{输出审查}\enspace{\small 拦截有害生成内容}};
+\node[ebox] (redteam) at (407, 99)  {\textbf{红队测试}\enspace{\small 持续探测对齐漏洞}};
+
+% deploy → 右侧各防护节点
+% 路由策略：deploy.east(221,68) → 向右至 x=291（dpo.east=281 右侧，左面板内无框）
+%           → 垂直至各目标 y → 水平进入右面板框
+% x=291 处从 y=68 至 y=213，不经过任何文字框
+\draw[darrow] (deploy.east) -- (291, 68) |- (inputf.west);
+\draw[darrow] (deploy.east) -- (291, 68) |- (rewrite.west);
+\draw[darrow] (deploy.east) -- (291, 68) |- (audit.west);
+\draw[darrow] (deploy.east) -- (291, 68) |- (redteam.west);
+
+% ════════════════════════════════════════════════════════════════════
+%  FEEDBACK ARC  红队 → 预训练（绕图顶部）
+%  路由：redteam.east(475,99) → (500,99) → (500,273) → (151,273) → pretrain.north
+%  y=273 高于两面板顶边(y=258)，x=500 在右面板各框东边(x=475)右侧
+% ════════════════════════════════════════════════════════════════════
+\draw[darrow]
+    (redteam.east)
+    -- (500, 99)
+    -- (500, 273)
+    -- node[above, font=\small] {评估反馈至训练阶段}
+       (151, 273)
+    -- (pretrain.north);
+
+\end{tikzpicture}

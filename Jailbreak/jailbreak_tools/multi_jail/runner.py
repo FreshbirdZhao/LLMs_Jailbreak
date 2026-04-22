@@ -33,6 +33,36 @@ class MultiTurnCaseRunner:
         self.defense_engine = defense_engine
         self.defense_enabled = defense_enabled and defense_engine is not None
 
+    def _enabled_defense_layers(self) -> list[str]:
+        if not self.defense_enabled:
+            return []
+        enabled_layers: list[str] = []
+        if getattr(self.defense_engine, "input_module", None) is not None:
+            enabled_layers.append("input")
+        if getattr(self.defense_engine, "interaction_module", None) is not None:
+            enabled_layers.append("interaction")
+        if getattr(self.defense_engine, "output_module", None) is not None:
+            enabled_layers.append("output")
+        return enabled_layers
+
+    def _prepare_defense_context(self, context, prompt: str, round_idx: int):
+        context.round_idx = round_idx
+        context.original_prompt = prompt
+        context.sanitized_prompt = None
+        context.raw_response = None
+        context.sanitized_response = None
+        context.model_call_allowed = True
+        return context
+
+    def _triggered_layers(self, decision_history: list[dict]) -> list[str]:
+        return list(
+            dict.fromkeys(
+                str(item.get("layer", "")).split("_")[0]
+                for item in decision_history
+                if str(item.get("action", "allow")) != "allow"
+            )
+        )
+
     async def run_case(self, model: dict, case: dict) -> dict:
         if self.attack_planner is not None:
             attack_plan = await self.attack_planner.build_initial_plan(
@@ -71,38 +101,56 @@ class MultiTurnCaseRunner:
         final_defense_action = "allow"
         final_defense_risk_level = 0
         final_defense_reasons: list[str] = []
+        defense_pre_action = "allow"
+        defense_post_action = "allow"
+        defense_prompt_changed = False
+        defense_response_changed = False
+        defense_decision_history: list[dict] = []
+        defense_layers_enabled = self._enabled_defense_layers()
         planner_model_name = attack_plan.planner_model_name
         judge_model_name = ""
         judge_final_reason = ""
         judge_final_confidence = ""
         replan_events: list[dict] = []
         consecutive_refusals = 0
+        defense_context = None
+
+        if self.defense_enabled:
+            defense_context = self.defense_engine.build_context_from_case(
+                case=case,
+                model_name=model["name"],
+                round_idx=1,
+            )
 
         for round_idx in range(1, self.max_rounds + 1):
             plan_node = attack_plan.plan_rounds[round_idx - 1] if round_idx - 1 < len(attack_plan.plan_rounds) else None
-            defense_context = None
             defense_pre = None
-            defense_post = None
             prompt_to_send = current_prompt
             visible_response = ""
             raw_response = ""
+            round_pre_action = "allow"
+            round_post_action = "allow"
+            round_prompt_changed = False
+            round_response_changed = False
+            round_triggered_layers: list[str] = []
+            round_history_start = len(defense_context.decision_history) if defense_context is not None else 0
 
             if self.defense_enabled:
-                defense_context = self.defense_engine.build_context_from_case(
-                    case=case,
-                    model_name=model["name"],
-                    round_idx=round_idx,
-                )
-                defense_context.original_prompt = current_prompt
+                defense_context = self._prepare_defense_context(defense_context, current_prompt, round_idx)
                 defense_pre = self.defense_engine.apply_pre_call_defense(defense_context)
                 if defense_context.sanitized_prompt:
                     prompt_to_send = defense_context.sanitized_prompt
+                    round_prompt_changed = prompt_to_send != current_prompt
+                    defense_prompt_changed = defense_prompt_changed or round_prompt_changed
+                round_pre_action = defense_pre.action.value
 
             conversation.add_user_message(current_prompt)
             if self.defense_enabled and (
                 not getattr(defense_context, "model_call_allowed", True)
                 or defense_pre.action in {DefenseAction.BLOCK, DefenseAction.TRUNCATE}
             ):
+                round_history = list(defense_context.decision_history[round_history_start:])
+                round_triggered_layers = self._triggered_layers(round_history)
                 visible_response = defense_pre.rewritten_text or "Request blocked by defense policy."
                 raw_response = visible_response
                 elapsed = 0.0
@@ -111,6 +159,9 @@ class MultiTurnCaseRunner:
                 final_defense_action = defense_pre.action.value
                 final_defense_risk_level = defense_pre.risk_level
                 final_defense_reasons = list(defense_pre.reasons)
+                defense_pre_action = round_pre_action
+                defense_post_action = round_post_action
+                defense_decision_history = list(defense_context.decision_history)
                 conversation.add_assistant_message(visible_response)
                 rounds.append(
                     {
@@ -141,6 +192,12 @@ class MultiTurnCaseRunner:
                         "defense_risk_level": defense_pre.risk_level,
                         "defense_reasons": list(defense_pre.reasons),
                         "defense_prompt": prompt_to_send,
+                        "defense_layers_enabled": list(defense_layers_enabled),
+                        "defense_triggered_layers": list(round_triggered_layers),
+                        "defense_pre_action": round_pre_action,
+                        "defense_post_action": round_post_action,
+                        "defense_prompt_changed": round_prompt_changed,
+                        "defense_response_changed": round_response_changed,
                     }
                 )
                 last_response = visible_response
@@ -155,12 +212,20 @@ class MultiTurnCaseRunner:
                 defense_post = self.defense_engine.apply_post_call_defense(defense_context, response)
                 if defense_context.sanitized_response:
                     visible_response = defense_context.sanitized_response
+                    round_response_changed = visible_response != raw_response
+                    defense_response_changed = defense_response_changed or round_response_changed
                 else:
                     visible_response = response
                 chosen_decision = defense_post if defense_post.action != DefenseAction.ALLOW else defense_pre
                 final_defense_action = chosen_decision.action.value
                 final_defense_risk_level = chosen_decision.risk_level
                 final_defense_reasons = list(chosen_decision.reasons)
+                round_post_action = defense_post.action.value
+                defense_pre_action = round_pre_action
+                defense_post_action = round_post_action
+                defense_decision_history = list(defense_context.decision_history)
+                round_history = list(defense_context.decision_history[round_history_start:])
+                round_triggered_layers = self._triggered_layers(round_history)
             else:
                 visible_response = response
 
@@ -283,6 +348,12 @@ class MultiTurnCaseRunner:
                     "defense_risk_level": final_defense_risk_level,
                     "defense_reasons": list(final_defense_reasons),
                     "defense_prompt": prompt_to_send,
+                    "defense_layers_enabled": list(defense_layers_enabled),
+                    "defense_triggered_layers": list(round_triggered_layers),
+                    "defense_pre_action": round_pre_action,
+                    "defense_post_action": round_post_action,
+                    "defense_prompt_changed": round_prompt_changed,
+                    "defense_response_changed": round_response_changed,
                     "followup_prompt": followup_prompt,
                     "followup_strategy": followup_strategy_name,
                     "followup_generator_model": followup_generator_model,
@@ -306,6 +377,10 @@ class MultiTurnCaseRunner:
             "test_name": case["name"],
             "category": case.get("category", "unknown"),
             "attack_type": case.get("attack_type", "unknown"),
+            "attack_dimension": case.get("attack_dimension", ""),
+            "attack_method": case.get("attack_method", ""),
+            "source_prompt": case.get("source_prompt", ""),
+            "source_file": case.get("source_file", ""),
             "prompt": case["prompt"],
             "response": last_response,
             "http_status": http_status,
@@ -324,8 +399,15 @@ class MultiTurnCaseRunner:
             "conversation": rounds,
             "defense_enabled": self.defense_enabled,
             "defense_blocked": defense_blocked,
+            "defense_layers_enabled": list(defense_layers_enabled),
+            "defense_triggered_layers": self._triggered_layers(defense_decision_history),
+            "defense_pre_action": defense_pre_action,
+            "defense_post_action": defense_post_action,
             "defense_final_action": final_defense_action,
             "defense_final_risk_level": final_defense_risk_level,
             "defense_final_reasons": list(final_defense_reasons),
+            "defense_prompt_changed": defense_prompt_changed,
+            "defense_response_changed": defense_response_changed,
+            "defense_decision_history": defense_decision_history,
             "planner_model_name": planner_model_name,
         }

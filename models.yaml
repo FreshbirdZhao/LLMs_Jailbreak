@@ -1,31 +1,24 @@
-# 定义所有可用的模型及其连接方式
-local:
-  - name: qwen2:latest
+# 定义所有可用的模型及其连接方式，对齐强度由低到高
+local:  
+  - name: qwen2.5:1.5b
     type: ollama
     base_url: http://localhost:11434
-    model: qwen2:latest
+    model: qwen2.5:1.5b
 
-  - name: deepseek-r1:1.5b
+  - name: qwen2.5:3b
     type: ollama
     base_url: http://localhost:11434
-    model: deepseek-r1:1.5b
+    model: qwen2.5:3b
 
-  - name: mistral:7b
+  - name: qwen3:8b
     type: ollama
     base_url: http://localhost:11434
-    model: mistral:7b
-    
-# 非法模型
-  - name: zarigata/unfiltered-llama3:latest
-    type: ollama
-    base_url: http://localhost:11434
-    model: mistral:7b
+    model: qwen3:8b
 
-  - name: huihui_ai/gemma3-abliterated:latest
+  - name: deepseek-r1:8b
     type: ollama
     base_url: http://localhost:11434
-    model: mistral:7b
-
+    model: deepseek-r1:8b
 
 commercial:
   # 商业模型默认启用；只有在对应环境变量存在时才会出现在交互菜单中
@@ -36,16 +29,3 @@ commercial:
     model: deepseek-chat
     api_key_env: DEEPSEEK_API_KEY
 
-  - name: deepseek-reasoner
-    type: openai_compatible
-    provider: external
-    base_url: https://api.deepseek.com
-    model: deepseek-reasoner
-    api_key_env: DEEPSEEK_API_KEY
-
-  - name: qwen-plus-2025-07-28
-    type: openai_compatible
-    provider: external
-    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
-    model: qwen-plus-2025-07-28
-    api_key_env: QWEN_API_KEY

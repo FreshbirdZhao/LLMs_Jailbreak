@@ -112,7 +112,11 @@ def _group_label_df(group_df: pd.DataFrame) -> pd.DataFrame:
         uncertain_count = pd.Series([0] * len(work), index=work.index)
     denom = safe_total.replace(0, pd.NA)
     work["uncertain_rate"] = (uncertain_count / denom).fillna(0.0)
-    if "source_file" in work.columns:
+    if "model_name" in work.columns:
+        base_labels = [str(x) for x in work.get("model_name", [])]
+    elif "analysis_group" in work.columns:
+        base_labels = [str(x) for x in work.get("analysis_group", [])]
+    elif "source_file" in work.columns:
         base_labels = [str(x) for x in work.get("source_file", [])]
     else:
         base_labels = [str(model) for model in work.get("model_name", [])]
@@ -134,6 +138,13 @@ def _build_plot_label_df(group_df: pd.DataFrame) -> pd.DataFrame:
     work["group_label"] = short_labels
     work["label_legend"] = [f"{short} | {full}" for short, full in zip(short_labels, full_labels)]
     return work
+
+
+def _build_dimension_plot_df(group_df: pd.DataFrame) -> pd.DataFrame:
+    work = _group_label_df(group_df).copy()
+    work["full_label"] = work["analysis_group"].astype(str)
+    work["group_label"] = work["analysis_group"].astype(str)
+    return work.sort_values(by=["success_rate", "high_risk_ratio", "total"], ascending=[False, False, False]).reset_index(drop=True)
 
 
 def _mapping_table_height(num_rows: int) -> float:
@@ -167,12 +178,26 @@ def _build_mapping_table_data(legend_rows: list[tuple[str, str]]) -> tuple[list[
     return headers, cell_rows
 
 
+def _mapping_table_axes_rect(main_height: float, table_height: float) -> tuple[float, float, float, float]:
+    total_height = max(0.1, main_height + table_height)
+    bottom = 0.02
+    height = min(0.30, max(0.12, table_height / total_height))
+    return (0.08, bottom, 0.84, height)
+
+
+def _save_figure(fig: object, fig_path: Path) -> None:
+    fig.savefig(fig_path, bbox_inches="tight", pad_inches=0.28)
+
+
 def _attach_mapping_table(fig: object, legend_rows: list[tuple[str, str]]) -> None:
     if not legend_rows:
         return
 
     num_cols = max(1, math.ceil(len(legend_rows) / 8))
-    ax = fig.add_axes([0.08, 0.02, 0.84, 0.18])
+    rows_per_col = math.ceil(len(legend_rows) / num_cols)
+    table_height = _mapping_table_height(len(legend_rows))
+    main_height = max(4.5, 0.42 * rows_per_col + 2.5)
+    ax = fig.add_axes(_mapping_table_axes_rect(main_height, table_height))
     ax.axis("off")
 
     col_labels, cell_rows = _build_mapping_table_data(legend_rows)
@@ -216,7 +241,7 @@ def plot_success_rate(group_df: pd.DataFrame, output_dir: str | Path) -> Path:
         ax.set_ylabel("Success Rate")
         ax.text(0.5, 0.5, "No data available", ha="center", va="center", transform=ax.transAxes)
         fig.tight_layout()
-        fig.savefig(fig_path, bbox_inches="tight")
+        _save_figure(fig, fig_path)
         plt.close()
         return fig_path
 
@@ -244,9 +269,13 @@ def plot_success_rate(group_df: pd.DataFrame, output_dir: str | Path) -> Path:
         x = min(1.04, float(row["success_rate"]) + 0.02)
         ax.text(x, idx, text, va="center", fontsize=8, ha="left", clip_on=False)
     _attach_mapping_table(fig, list(zip(work["group_label"].tolist(), work["full_label"].tolist())))
-    fig.savefig(fig_path, bbox_inches="tight")
+    _save_figure(fig, fig_path)
     plt.close()
     return fig_path
+
+
+def plot_dangerous_success_rate(group_df: pd.DataFrame, output_dir: str | Path) -> Path:
+    return plot_success_rate(group_df, output_dir)
 
 
 def plot_risk_distribution(group_df: pd.DataFrame, output_dir: str | Path) -> Path:
@@ -266,7 +295,7 @@ def plot_risk_distribution(group_df: pd.DataFrame, output_dir: str | Path) -> Pa
         ax.set_ylabel("Ratio")
         ax.text(0.5, 0.5, "No data available", ha="center", va="center", transform=ax.transAxes)
         fig.tight_layout()
-        fig.savefig(fig_path, bbox_inches="tight")
+        _save_figure(fig, fig_path)
         plt.close()
         return fig_path
 
@@ -292,7 +321,7 @@ def plot_risk_distribution(group_df: pd.DataFrame, output_dir: str | Path) -> Pa
         ax.text(idx, 1.03, f"n={total}", ha="center", va="bottom", fontsize=8)
     ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.02), frameon=False, title="Risk Level")
     _attach_mapping_table(fig, list(zip(work["group_label"].tolist(), work["full_label"].tolist())))
-    fig.savefig(fig_path, bbox_inches="tight")
+    _save_figure(fig, fig_path)
     plt.close()
     return fig_path
 
@@ -314,7 +343,7 @@ def plot_uncertainty_overview(group_df: pd.DataFrame, output_dir: str | Path) ->
         ax.set_ylabel("Uncertain Rate")
         ax.text(0.5, 0.5, "No data available", ha="center", va="center", transform=ax.transAxes)
         fig.tight_layout()
-        fig.savefig(fig_path, bbox_inches="tight")
+        _save_figure(fig, fig_path)
         plt.close()
         return fig_path
 
@@ -352,7 +381,88 @@ def plot_uncertainty_overview(group_df: pd.DataFrame, output_dir: str | Path) ->
             fontsize=8,
         )
     _attach_mapping_table(fig, list(zip(work["group_label"].tolist(), work["full_label"].tolist())))
-    fig.savefig(fig_path, bbox_inches="tight")
+    _save_figure(fig, fig_path)
+    plt.close()
+    return fig_path
+
+
+def plot_high_risk_ratio(group_df: pd.DataFrame, output_dir: str | Path) -> Path:
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    fig_path = out / "high_risk_ratio.png"
+    try:
+        _, plt, sns = _configure_matplotlib()
+    except Exception:
+        _write_placeholder_png(fig_path)
+        return fig_path
+
+    if group_df.empty:
+        fig, ax = plt.subplots(figsize=(8, 4.5))
+        ax.set_title("High-risk Ratio")
+        ax.text(0.5, 0.5, "No data available", ha="center", va="center", transform=ax.transAxes)
+        fig.tight_layout()
+        _save_figure(fig, fig_path)
+        plt.close()
+        return fig_path
+
+    work = _build_plot_label_df(group_df).sort_values(by=["high_risk_ratio", "total"], ascending=[False, False]).reset_index(drop=True)
+    fig, ax = _figure_with_table(plt, 10, max(4.5, 0.55 * len(work) + 1.5), len(work))
+    values = pd.to_numeric(work["high_risk_ratio"], errors="coerce").fillna(0.0)
+    color = "#AA4A44"
+    if sns is not None:
+        sns.barplot(data=work, x="high_risk_ratio", y="group_label", ax=ax, color=color, orient="h")
+    else:
+        ax.barh(work["group_label"], values, color=color)
+    ax.set_xlim(0, 1.0)
+    ax.set_xlabel("High-risk Ratio")
+    ax.set_ylabel("Group")
+    ax.set_title("High-risk Output Ratio by Group")
+    _attach_mapping_table(fig, list(zip(work["group_label"].tolist(), work["full_label"].tolist())))
+    _save_figure(fig, fig_path)
+    plt.close()
+    return fig_path
+
+
+def plot_high_risk_vs_success(group_df: pd.DataFrame, output_dir: str | Path) -> Path:
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    fig_path = out / "high_risk_vs_success.png"
+    try:
+        _, plt, _ = _configure_matplotlib()
+    except Exception:
+        _write_placeholder_png(fig_path)
+        return fig_path
+
+    if group_df.empty:
+        fig, ax = plt.subplots(figsize=(8, 4.5))
+        ax.set_title("High-risk vs Dangerous Success")
+        ax.text(0.5, 0.5, "No data available", ha="center", va="center", transform=ax.transAxes)
+        fig.tight_layout()
+        _save_figure(fig, fig_path)
+        plt.close()
+        return fig_path
+
+    work = _group_label_df(group_df)
+    fig, ax = plt.subplots(figsize=(8.5, max(4.5, 3.8 + 0.12 * len(work))))
+    x = pd.to_numeric(work["success_rate"], errors="coerce").fillna(0.0)
+    y = pd.to_numeric(work["high_risk_ratio"], errors="coerce").fillna(0.0)
+    sizes = 50 + 12 * pd.to_numeric(work["total"], errors="coerce").fillna(0.0)
+    ax.scatter(x, y, s=sizes, color="#9C3D54", alpha=0.8, edgecolor="white", linewidth=0.8)
+    for _, row in work.iterrows():
+        ax.text(
+            float(row["success_rate"]) + 0.01,
+            float(row["high_risk_ratio"]) + 0.01,
+            str(row["group_label"]),
+            fontsize=8,
+            clip_on=False,
+        )
+    ax.set_xlim(0, 1.0)
+    ax.set_ylim(0, 1.0)
+    ax.set_xlabel("Dangerous Jailbreak Rate")
+    ax.set_ylabel("High-risk Ratio")
+    ax.set_title("High-risk vs Dangerous Success by Group")
+    fig.tight_layout(pad=1.4)
+    _save_figure(fig, fig_path)
     plt.close()
     return fig_path
 
@@ -374,7 +484,7 @@ def plot_risk_heatmap(group_df: pd.DataFrame, output_dir: str | Path) -> Path:
         ax.set_ylabel("Source File")
         ax.text(0.5, 0.5, "No data available", ha="center", va="center", transform=ax.transAxes)
         fig.tight_layout()
-        fig.savefig(fig_path, bbox_inches="tight")
+        _save_figure(fig, fig_path)
         plt.close()
         return fig_path
 
@@ -413,7 +523,197 @@ def plot_risk_heatmap(group_df: pd.DataFrame, output_dir: str | Path) -> Path:
     ax.set_xlabel("Risk Level")
     ax.set_ylabel("Source File")
     _attach_mapping_table(fig, list(zip(work["group_label"].tolist(), work["full_label"].tolist())))
-    fig.savefig(fig_path, bbox_inches="tight")
+    _save_figure(fig, fig_path)
+    plt.close()
+    return fig_path
+
+
+def plot_dimension_success_ranking(group_df: pd.DataFrame, output_dir: str | Path) -> Path:
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    fig_path = out / "dimension_success_ranking.png"
+    try:
+        _, plt, sns = _configure_matplotlib()
+    except Exception:
+        _write_placeholder_png(fig_path)
+        return fig_path
+
+    if group_df.empty:
+        fig, ax = plt.subplots(figsize=(8, 4.5))
+        ax.set_title("Attack Dimension Success Ranking")
+        ax.text(0.5, 0.5, "No data available", ha="center", va="center", transform=ax.transAxes)
+        fig.tight_layout()
+        _save_figure(fig, fig_path)
+        plt.close()
+        return fig_path
+
+    work = _build_dimension_plot_df(group_df)
+    y = pd.to_numeric(work["success_rate"], errors="coerce").fillna(0.0)
+    lows = (y - pd.to_numeric(work["ci95_low"], errors="coerce").fillna(0.0)).clip(lower=0.0)
+    highs = (pd.to_numeric(work["ci95_high"], errors="coerce").fillna(0.0) - y).clip(lower=0.0)
+    fig, ax = plt.subplots(figsize=(10.5, max(5.0, 0.55 * len(work) + 1.8)))
+    color = "#255F85"
+    if sns is not None:
+        sns.barplot(data=work, x="success_rate", y="group_label", ax=ax, color=color, orient="h")
+    else:
+        ax.barh(work["group_label"], y, color=color)
+    ax.errorbar(y, work["group_label"], xerr=[lows, highs], fmt="none", ecolor="#1A1A1A", capsize=3, linewidth=1.1)
+    ax.set_xlim(0, min(1.0, float(y.max()) * 1.35 + 0.02) if len(work) else 1.0)
+    ax.set_xlabel("Dangerous Jailbreak Rate")
+    ax.set_ylabel("Attack Dimension")
+    ax.set_title("Attack Dimension Ranking by Dangerous Jailbreak Rate")
+    for idx, row in work.iterrows():
+        label_x = min(ax.get_xlim()[1] * 0.985, float(row["success_rate"]) + max(0.01, ax.get_xlim()[1] * 0.015))
+        ax.text(label_x, idx, f"{int(row.get('yes_count', 0))}/{int(row.get('total', 0))}", va="center", fontsize=8, ha="left")
+    fig.tight_layout()
+    _save_figure(fig, fig_path)
+    plt.close()
+    return fig_path
+
+
+def plot_dimension_risk_heatmap(group_df: pd.DataFrame, output_dir: str | Path) -> Path:
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    fig_path = out / "dimension_risk_heatmap.png"
+    try:
+        _, plt, sns = _configure_matplotlib()
+    except Exception:
+        _write_placeholder_png(fig_path)
+        return fig_path
+
+    if group_df.empty:
+        fig, ax = plt.subplots(figsize=(8, 4.5))
+        ax.set_title("Attack Dimension Risk Heatmap")
+        ax.text(0.5, 0.5, "No data available", ha="center", va="center", transform=ax.transAxes)
+        fig.tight_layout()
+        _save_figure(fig, fig_path)
+        plt.close()
+        return fig_path
+
+    work = _build_dimension_plot_df(group_df)
+    heat = work[[f"risk_{i}_ratio" for i in range(5)]].copy()
+    heat.index = work["group_label"]
+    fig, ax = plt.subplots(figsize=(9.5, max(4.8, 0.55 * len(heat) + 1.6)))
+    if sns is not None:
+        sns.heatmap(
+            heat,
+            ax=ax,
+            cmap="YlOrRd",
+            vmin=0.0,
+            vmax=1.0,
+            annot=True,
+            fmt=".2f",
+            cbar_kws={"label": "Ratio"},
+            linewidths=0.4,
+            linecolor="white",
+        )
+    else:
+        im = ax.imshow(heat.values, cmap="YlOrRd", vmin=0.0, vmax=1.0, aspect="auto")
+        ax.set_xticks(range(heat.shape[1]))
+        ax.set_yticks(range(heat.shape[0]))
+        ax.set_xticklabels(heat.columns.tolist())
+        ax.set_yticklabels(heat.index.tolist())
+        for r in range(heat.shape[0]):
+            for c in range(heat.shape[1]):
+                ax.text(c, r, f"{heat.iloc[r, c]:.2f}", ha="center", va="center", fontsize=8)
+        cbar = fig.colorbar(im, ax=ax)
+        cbar.set_label("Ratio")
+    ax.set_title("Risk Distribution Heatmap Across Attack Dimensions")
+    ax.set_xlabel("Risk Level")
+    ax.set_ylabel("Attack Dimension")
+    ax.set_xticklabels([f"risk_{i}" for i in range(5)], rotation=0)
+    fig.tight_layout()
+    _save_figure(fig, fig_path)
+    plt.close()
+    return fig_path
+
+
+def plot_dimension_profile_panel(group_df: pd.DataFrame, output_dir: str | Path) -> Path:
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    fig_path = out / "dimension_profile_panel.png"
+    try:
+        _, plt, _ = _configure_matplotlib()
+    except Exception:
+        _write_placeholder_png(fig_path)
+        return fig_path
+
+    if group_df.empty:
+        fig, ax = plt.subplots(figsize=(8, 4.5))
+        ax.set_title("Attack Dimension Profile Panel")
+        ax.text(0.5, 0.5, "No data available", ha="center", va="center", transform=ax.transAxes)
+        fig.tight_layout()
+        _save_figure(fig, fig_path)
+        plt.close()
+        return fig_path
+
+    work = _build_dimension_plot_df(group_df)
+    x = list(range(len(work)))
+    width = 0.24
+    fig, ax = plt.subplots(figsize=(12, max(5.2, 4.2 + 0.1 * len(work))))
+    success = pd.to_numeric(work["success_rate"], errors="coerce").fillna(0.0)
+    high_risk = pd.to_numeric(work["high_risk_ratio"], errors="coerce").fillna(0.0)
+    uncertain = pd.to_numeric(work["uncertain_rate"], errors="coerce").fillna(0.0)
+    ax.bar([v - width for v in x], success, width=width, label="Success Rate", color="#2C699A")
+    ax.bar(x, high_risk, width=width, label="High-risk Ratio", color="#B23A48")
+    ax.bar([v + width for v in x], uncertain, width=width, label="Uncertain Rate", color="#8C6BB1")
+    ax.set_ylim(0, 1.0)
+    ax.set_xticks(x)
+    ax.set_xticklabels(work["group_label"].tolist(), rotation=28, ha="right")
+    ax.set_ylabel("Ratio")
+    ax.set_xlabel("Attack Dimension")
+    ax.set_title("Attack Dimension Profile: Success, High-risk, and Uncertainty")
+    ax.legend(loc="upper right", frameon=False)
+    fig.tight_layout()
+    _save_figure(fig, fig_path)
+    plt.close()
+    return fig_path
+
+
+def plot_dimension_priority_quadrants(group_df: pd.DataFrame, output_dir: str | Path) -> Path:
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    fig_path = out / "dimension_priority_quadrants.png"
+    try:
+        _, plt, _ = _configure_matplotlib()
+    except Exception:
+        _write_placeholder_png(fig_path)
+        return fig_path
+
+    if group_df.empty:
+        fig, ax = plt.subplots(figsize=(8, 4.5))
+        ax.set_title("Attack Dimension Priority Quadrants")
+        ax.text(0.5, 0.5, "No data available", ha="center", va="center", transform=ax.transAxes)
+        fig.tight_layout()
+        _save_figure(fig, fig_path)
+        plt.close()
+        return fig_path
+
+    work = _build_dimension_plot_df(group_df)
+    x = pd.to_numeric(work["success_rate"], errors="coerce").fillna(0.0)
+    y = pd.to_numeric(work["high_risk_ratio"], errors="coerce").fillna(0.0)
+    sizes = 120 + 10 * pd.to_numeric(work["total"], errors="coerce").fillna(0.0)
+    x_mid = float(x.mean()) if len(x) else 0.0
+    y_mid = float(y.mean()) if len(y) else 0.0
+    fig, ax = plt.subplots(figsize=(9, 6.2))
+    ax.scatter(x, y, s=sizes, color="#A23E48", alpha=0.78, edgecolor="white", linewidth=1.0)
+    ax.axvline(x_mid, color="#7A7A7A", linestyle="--", linewidth=1.0)
+    ax.axhline(y_mid, color="#7A7A7A", linestyle="--", linewidth=1.0)
+    for _, row in work.iterrows():
+        ax.text(
+            float(row["success_rate"]) + 0.002,
+            float(row["high_risk_ratio"]) + 0.0005,
+            str(row["group_label"]),
+            fontsize=8,
+            clip_on=False,
+        )
+    ax.set_xlim(0, min(1.0, float(x.max()) * 1.25 + 0.01) if len(x) else 1.0)
+    ax.set_ylim(0, min(1.0, float(y.max()) * 1.25 + 0.01) if len(y) else 1.0)
+    ax.set_xlabel("Dangerous Jailbreak Rate")
+    ax.set_ylabel("High-risk Ratio")
+    ax.set_title("Attack Dimension Priority Quadrants")
+    fig.tight_layout(pad=1.4)
+    _save_figure(fig, fig_path)
     plt.close()
     return fig_path
 
@@ -449,7 +749,7 @@ def plot_multi_turn_cumulative_success(round_df: pd.DataFrame, output_dir: str |
         ax.set_ylabel("Cumulative Success Rate")
         ax.text(0.5, 0.5, "No data available", ha="center", va="center", transform=ax.transAxes)
         fig.tight_layout()
-        fig.savefig(fig_path, bbox_inches="tight")
+        _save_figure(fig, fig_path)
         plt.close()
         return fig_path
 
@@ -471,7 +771,7 @@ def plot_multi_turn_cumulative_success(round_df: pd.DataFrame, output_dir: str |
     ax.set_title("Multi-turn Cumulative Success Rate by Round")
     ax.legend(loc="best", frameon=False)
     fig.tight_layout()
-    fig.savefig(fig_path, bbox_inches="tight")
+    _save_figure(fig, fig_path)
     plt.close()
     return fig_path
 
@@ -494,7 +794,7 @@ def plot_multi_turn_first_success_distribution(round_df: pd.DataFrame, output_di
         ax.set_ylabel("First Success Count")
         ax.text(0.5, 0.5, "No data available", ha="center", va="center", transform=ax.transAxes)
         fig.tight_layout()
-        fig.savefig(fig_path, bbox_inches="tight")
+        _save_figure(fig, fig_path)
         plt.close()
         return fig_path
 
@@ -519,6 +819,332 @@ def plot_multi_turn_first_success_distribution(round_df: pd.DataFrame, output_di
     ax.set_title("First Successful Jailbreak Round Distribution")
     ax.legend(loc="best", frameon=False)
     fig.tight_layout()
-    fig.savefig(fig_path, bbox_inches="tight")
+    _save_figure(fig, fig_path)
+    plt.close()
+    return fig_path
+
+
+def _group_metric_rows(group_df: pd.DataFrame) -> list[dict]:
+    return _records_from_dataframe(group_df)
+
+
+def _build_label_distribution_rows(group_df: pd.DataFrame) -> list[dict]:
+    rows = _group_metric_rows(group_df)
+    built: list[dict] = []
+    for row in rows:
+        built.append(
+            {
+                "group_label": str(row.get("analysis_group", "unknown") or "unknown"),
+                "blocked": float(row.get("blocked_count", 0) or 0),
+                "benign": float(row.get("benign_count", 0) or 0),
+                "ambiguous": float(row.get("ambiguous_count", 0) or 0),
+                "harmful_informational": float(row.get("harmful_informational_count", 0) or 0),
+                "harmful_actionable": float(row.get("harmful_actionable_count", 0) or 0),
+            }
+        )
+    return built
+
+
+def _build_ambiguity_breakdown_rows(group_df: pd.DataFrame) -> list[dict]:
+    rows = _group_metric_rows(group_df)
+    built: list[dict] = []
+    for row in rows:
+        built.append(
+            {
+                "group_label": str(row.get("analysis_group", "unknown") or "unknown"),
+                "boundary_mixed": float(row.get("reason_boundary_mixed_count", 0) or 0),
+                "target_unclear": float(row.get("reason_target_unclear_count", 0) or 0),
+                "insufficient_evidence": float(row.get("reason_insufficient_evidence_count", 0) or 0),
+                "context_conflict": float(row.get("reason_context_conflict_count", 0) or 0),
+            }
+        )
+    return built
+
+
+def _build_assistance_harm_matrix_rows(group_df: pd.DataFrame) -> list[dict]:
+    rows = _group_metric_rows(group_df)
+    built: list[dict] = []
+    for row in rows:
+        descriptive_ratio = float(row.get("assistance_descriptive_ratio", 0.0) or 0.0)
+        procedural_ratio = float(row.get("assistance_procedural_ratio", 0.0) or 0.0)
+        operational_ratio = float(row.get("assistance_operational_ratio", 0.0) or 0.0)
+        ambiguous_total = float(row.get("ambiguous_count", 0) or 0)
+        harmful_total = float((row.get("harmful_informational_count", 0) or 0) + (row.get("harmful_actionable_count", 0) or 0))
+        harmful_total = 1.0 if harmful_total > 0 else 0.0
+        ambiguous_total = 1.0 if ambiguous_total > 0 else 0.0
+        built.append(
+            {
+                "group_label": str(row.get("analysis_group", "unknown") or "unknown"),
+                "descriptive_ambiguous": descriptive_ratio * ambiguous_total,
+                "descriptive_harmful": descriptive_ratio * harmful_total,
+                "procedural_ambiguous": procedural_ratio * ambiguous_total,
+                "procedural_harmful": 0.0,
+                "operational_ambiguous": 0.0,
+                "operational_harmful": operational_ratio * harmful_total,
+            }
+        )
+    return built
+
+
+def _build_risk_profile_rows(group_df: pd.DataFrame) -> list[dict]:
+    rows = _group_metric_rows(group_df)
+    built: list[dict] = []
+    for row in rows:
+        built.append(
+            {
+                "group_label": str(row.get("analysis_group", "unknown") or "unknown"),
+                "harm_intent": float(row.get("harm_intent_mean", 0.0) or 0.0),
+                "actionability": float(row.get("actionability_mean", 0.0) or 0.0),
+                "specificity": float(row.get("specificity_mean", 0.0) or 0.0),
+                "evasion": float(row.get("evasion_mean", 0.0) or 0.0),
+                "impact": float(row.get("impact_mean", 0.0) or 0.0),
+            }
+        )
+    return built
+
+
+def _placeholder_first(group_df: pd.DataFrame, output_dir: str | Path, filename: str) -> Path:
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    fig_path = out / filename
+    try:
+        _, plt, _ = _configure_matplotlib()
+    except Exception:
+        _write_placeholder_png(fig_path)
+        return fig_path
+
+    if getattr(group_df, "empty", True):
+        fig, ax = plt.subplots(figsize=(8, 4.5))
+        ax.text(0.5, 0.5, "No data available", ha="center", va="center", transform=ax.transAxes)
+        fig.tight_layout()
+        _save_figure(fig, fig_path)
+        plt.close()
+        return fig_path
+
+    # The richer figures can use a compact placeholder chart until full rendering is implemented.
+    fig, ax = plt.subplots(figsize=(8, 4.5))
+    ax.text(0.5, 0.5, filename.replace(".png", "").replace("_", "\n"), ha="center", va="center", transform=ax.transAxes)
+    ax.set_axis_off()
+    fig.tight_layout()
+    _save_figure(fig, fig_path)
+    plt.close()
+    return fig_path
+
+
+def plot_label_distribution(group_df: pd.DataFrame, output_dir: str | Path) -> Path:
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    fig_path = out / "label_distribution.png"
+    rows = _build_label_distribution_rows(group_df)
+    try:
+        _, plt, _ = _configure_matplotlib()
+    except Exception:
+        _write_placeholder_png(fig_path)
+        return fig_path
+
+    if not rows:
+        return _placeholder_first(group_df, output_dir, "label_distribution.png")
+
+    fig, ax = plt.subplots(figsize=(11, max(4.8, 0.6 * len(rows) + 1.6)))
+    x_labels = [row["group_label"] for row in rows]
+    bottom = [0.0] * len(rows)
+    series = [
+        ("blocked", "#7A8C99"),
+        ("benign", "#7FB069"),
+        ("ambiguous", "#D6A85F"),
+        ("harmful_informational", "#D36E70"),
+        ("harmful_actionable", "#8C2F39"),
+    ]
+    for key, color in series:
+        values = [row[key] for row in rows]
+        ax.bar(x_labels, values, bottom=bottom, label=key, color=color, width=0.72)
+        bottom = [base + value for base, value in zip(bottom, values)]
+    ax.set_ylabel("Count")
+    ax.set_xlabel("Analysis Group")
+    ax.set_title("Final Label Distribution by Group")
+    ax.set_xticks(range(len(x_labels)))
+    ax.set_xticklabels(x_labels, rotation=28, ha="right")
+    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.02), frameon=False)
+    fig.tight_layout()
+    _save_figure(fig, fig_path)
+    plt.close()
+    return fig_path
+
+
+def plot_ambiguity_breakdown(group_df: pd.DataFrame, output_dir: str | Path) -> Path:
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    fig_path = out / "ambiguity_breakdown.png"
+    rows = _build_ambiguity_breakdown_rows(group_df)
+    try:
+        _, plt, _ = _configure_matplotlib()
+    except Exception:
+        _write_placeholder_png(fig_path)
+        return fig_path
+
+    if not rows:
+        return _placeholder_first(group_df, output_dir, "ambiguity_breakdown.png")
+
+    fig, ax = plt.subplots(figsize=(10.5, max(4.8, 0.6 * len(rows) + 1.6)))
+    x_labels = [row["group_label"] for row in rows]
+    bottom = [0.0] * len(rows)
+    series = [
+        ("boundary_mixed", "#C97C5D"),
+        ("target_unclear", "#D9B44A"),
+        ("insufficient_evidence", "#7D8CA3"),
+        ("context_conflict", "#8D6A9F"),
+    ]
+    for key, color in series:
+        values = [row[key] for row in rows]
+        ax.bar(x_labels, values, bottom=bottom, label=key, color=color, width=0.72)
+        bottom = [base + value for base, value in zip(bottom, values)]
+    ax.set_ylabel("Count")
+    ax.set_xlabel("Analysis Group")
+    ax.set_title("Ambiguity Reason Breakdown")
+    ax.set_xticks(range(len(x_labels)))
+    ax.set_xticklabels(x_labels, rotation=28, ha="right")
+    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.02), frameon=False)
+    fig.tight_layout()
+    _save_figure(fig, fig_path)
+    plt.close()
+    return fig_path
+
+
+def plot_assistance_vs_harm_matrix(group_df: pd.DataFrame, output_dir: str | Path) -> Path:
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    fig_path = out / "assistance_vs_harm_matrix.png"
+    rows = _build_assistance_harm_matrix_rows(group_df)
+    try:
+        _, plt, sns = _configure_matplotlib()
+    except Exception:
+        _write_placeholder_png(fig_path)
+        return fig_path
+
+    if not rows:
+        return _placeholder_first(group_df, output_dir, "assistance_vs_harm_matrix.png")
+
+    heat_rows = []
+    y_labels = []
+    for row in rows:
+        heat_rows.append(
+            [
+                row["descriptive_ambiguous"],
+                row["descriptive_harmful"],
+                row["procedural_ambiguous"],
+                row["procedural_harmful"],
+                row["operational_ambiguous"],
+                row["operational_harmful"],
+            ]
+        )
+        y_labels.append(row["group_label"])
+
+    fig, ax = plt.subplots(figsize=(11, max(4.8, 0.6 * len(rows) + 1.6)))
+    x_labels = [
+        "descriptive\nambiguous",
+        "descriptive\nharmful",
+        "procedural\nambiguous",
+        "procedural\nharmful",
+        "operational\nambiguous",
+        "operational\nharmful",
+    ]
+    if sns is not None:
+        sns.heatmap(heat_rows, ax=ax, cmap="YlOrBr", annot=True, fmt=".2f", cbar_kws={"label": "Weighted Ratio"})
+    else:
+        im = ax.imshow(heat_rows, cmap="YlOrBr", aspect="auto")
+        for r, values in enumerate(heat_rows):
+            for c, value in enumerate(values):
+                ax.text(c, r, f"{value:.2f}", ha="center", va="center", fontsize=8)
+        cbar = fig.colorbar(im, ax=ax)
+        cbar.set_label("Weighted Ratio")
+    ax.set_xticks(range(len(x_labels)))
+    ax.set_xticklabels(x_labels, rotation=0)
+    ax.set_yticks(range(len(y_labels)))
+    ax.set_yticklabels(y_labels)
+    ax.set_xlabel("Assistance vs Harm Slice")
+    ax.set_ylabel("Analysis Group")
+    ax.set_title("Assistance vs Harm Matrix")
+    fig.tight_layout()
+    _save_figure(fig, fig_path)
+    plt.close()
+    return fig_path
+
+
+def plot_risk_profile_heatmap(group_df: pd.DataFrame, output_dir: str | Path) -> Path:
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    fig_path = out / "risk_profile_heatmap.png"
+    rows = _build_risk_profile_rows(group_df)
+    try:
+        _, plt, sns = _configure_matplotlib()
+    except Exception:
+        _write_placeholder_png(fig_path)
+        return fig_path
+
+    if not rows:
+        return _placeholder_first(group_df, output_dir, "risk_profile_heatmap.png")
+
+    heat_rows = []
+    y_labels = []
+    for row in rows:
+        heat_rows.append([row["harm_intent"], row["actionability"], row["specificity"], row["evasion"], row["impact"]])
+        y_labels.append(row["group_label"])
+
+    fig, ax = plt.subplots(figsize=(10.5, max(4.8, 0.6 * len(rows) + 1.6)))
+    x_labels = ["harm_intent", "actionability", "specificity", "evasion", "impact"]
+    if sns is not None:
+        sns.heatmap(heat_rows, ax=ax, cmap="Reds", annot=True, fmt=".2f", cbar_kws={"label": "Mean Score"})
+    else:
+        im = ax.imshow(heat_rows, cmap="Reds", aspect="auto")
+        for r, values in enumerate(heat_rows):
+            for c, value in enumerate(values):
+                ax.text(c, r, f"{value:.2f}", ha="center", va="center", fontsize=8)
+        cbar = fig.colorbar(im, ax=ax)
+        cbar.set_label("Mean Score")
+    ax.set_xticks(range(len(x_labels)))
+    ax.set_xticklabels(x_labels, rotation=0)
+    ax.set_yticks(range(len(y_labels)))
+    ax.set_yticklabels(y_labels)
+    ax.set_xlabel("Risk Dimension")
+    ax.set_ylabel("Analysis Group")
+    ax.set_title("Risk Profile Heatmap")
+    fig.tight_layout()
+    _save_figure(fig, fig_path)
+    plt.close()
+    return fig_path
+
+
+def plot_refusal_leakage(group_df: pd.DataFrame, output_dir: str | Path) -> Path:
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    fig_path = out / "refusal_leakage.png"
+    rows = _group_metric_rows(group_df)
+    try:
+        _, plt, sns = _configure_matplotlib()
+    except Exception:
+        _write_placeholder_png(fig_path)
+        return fig_path
+
+    if not rows:
+        return _placeholder_first(group_df, output_dir, "refusal_leakage.png")
+
+    rows = sorted(rows, key=lambda row: float(row.get("refusal_leakage_rate", 0.0) or 0.0), reverse=True)
+    fig, ax = plt.subplots(figsize=(10, max(4.8, 0.55 * len(rows) + 1.6)))
+    x = [float(row.get("refusal_leakage_rate", 0.0) or 0.0) for row in rows]
+    y = [str(row.get("analysis_group", "unknown") or "unknown") for row in rows]
+    if sns is not None:
+        # seaborn fallback to matplotlib if list-input barplot is unavailable in local version
+        try:
+            sns.barplot(x=x, y=y, ax=ax, color="#A23E48", orient="h")
+        except Exception:
+            ax.barh(y, x, color="#A23E48")
+    else:
+        ax.barh(y, x, color="#A23E48")
+    ax.set_xlim(0, 1.0)
+    ax.set_xlabel("Refusal Leakage Rate")
+    ax.set_ylabel("Analysis Group")
+    ax.set_title("Refusal Leakage by Group")
+    fig.tight_layout()
+    _save_figure(fig, fig_path)
     plt.close()
     return fig_path

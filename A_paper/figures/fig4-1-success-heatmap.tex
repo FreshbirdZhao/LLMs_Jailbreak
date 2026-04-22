@@ -1,0 +1,80 @@
+\begin{tikzpicture}[x=1pt,y=1pt,font=\small,
+    cell/.style={minimum width=108pt, minimum height=32pt,
+                 draw=white, line width=1pt, align=center, font=\small},
+    rowlab/.style={anchor=east, font=\small},
+    collab/.style={font=\small\bfseries, align=center},
+]
+
+% ── canvas ──────────────────────────────────────────────────────────
+% ════════════════════════════════════════════════════════════════════
+%  COLUMN HEADERS  (y = 308)
+%  col centres:  182  290  398
+% ════════════════════════════════════════════════════════════════════
+\node[collab] at (182,308) {deepseek-chat};
+\node[collab] at (290,308) {qwen2.5:1.5b};
+\node[collab] at (398,308) {qwen2.5:3b};
+
+% ════════════════════════════════════════════════════════════════════
+%  ROW LABELS  (x = 100,  y from 282 down, spacing 32pt)
+% ════════════════════════════════════════════════════════════════════
+\node[rowlab] at (100,282) {认知误导};
+\node[rowlab] at (100,250) {指令重构};
+\node[rowlab] at (100,218) {格式伪装};
+\node[rowlab] at (100,186) {上下文操控};
+\node[rowlab] at (100,154) {对抗后缀};
+\node[rowlab] at (100,122) {分词切分};
+\node[rowlab] at (100, 90) {编码扰动};
+\node[rowlab] at (100, 58) {低资源语言};
+\node[rowlab] at (100, 26) {ASCII伪装};
+
+% ════════════════════════════════════════════════════════════════════
+%  HEATMAP CELLS
+%  dark cells (blue!50+) → white text;  light cells → default black
+% ════════════════════════════════════════════════════════════════════
+
+% ── Row 1: 认知误导  y = 282 ────────────────────────────────────────
+\node[cell, fill=blue!55] at (182,282) {\textcolor{white}{\textbf{9.58\%}}};
+\node[cell, fill=blue!70] at (290,282) {\textcolor{white}{\textbf{13.75\%}}};
+\node[cell, fill=blue!74] at (398,282) {\textcolor{white}{\textbf{14.58\%}}};
+
+% ── Row 2: 指令重构  y = 250 ────────────────────────────────────────
+\node[cell, fill=blue!18] at (182,250) {0.83\%};
+\node[cell, fill=blue!18] at (290,250) {0.83\%};
+\node[cell, fill=blue!28] at (398,250) {2.78\%};
+
+% ── Row 3: 格式伪装  y = 218 ────────────────────────────────────────
+\node[cell, fill=blue!16] at (182,218) {0.56\%};
+\node[cell, fill=blue!24] at (290,218) {1.81\%};
+\node[cell, fill=blue!18] at (398,218) {0.83\%};
+
+% ── Row 4: 上下文操控  y = 186 ──────────────────────────────────────
+\node[cell, fill=blue!14] at (182,186) {0.28\%};
+\node[cell, fill=blue!22] at (290,186) {1.39\%};
+\node[cell, fill=blue!16] at (398,186) {0.56\%};
+
+% ── Row 5: 对抗后缀  y = 154 ────────────────────────────────────────
+\node[cell, fill=blue!12] at (182,154) {0.14\%};
+\node[cell, fill=blue!16] at (290,154) {0.42\%};
+\node[cell, fill=blue!18] at (398,154) {0.56\%};
+
+% ── Row 6: 分词切分  y = 122 ────────────────────────────────────────
+\node[cell, fill=blue!15] at (182,122) {0.42\%};
+\node[cell, fill=blue!12] at (290,122) {0.14\%};
+\node[cell, fill=blue!15] at (398,122) {0.42\%};
+
+% ── Row 7: 编码扰动  y = 90 ─────────────────────────────────────────
+\node[cell, fill=blue!18] at (182, 90) {0.56\%};
+\node[cell, fill=blue!10] at (290, 90) {0.00\%};
+\node[cell, fill=blue!10] at (398, 90) {0.00\%};
+
+% ── Row 8: 低资源语言  y = 58 ───────────────────────────────────────
+\node[cell, fill=blue!10] at (182, 58) {0.00\%};
+\node[cell, fill=blue!11] at (290, 58) {0.15\%};
+\node[cell, fill=blue!10] at (398, 58) {0.00\%};
+
+% ── Row 9: ASCII伪装  y = 26 ────────────────────────────────────────
+\node[cell, fill=blue!10] at (182, 26) {0.00\%};
+\node[cell, fill=blue!10] at (290, 26) {0.00\%};
+\node[cell, fill=blue!11] at (398, 26) {0.14\%};
+
+\end{tikzpicture}

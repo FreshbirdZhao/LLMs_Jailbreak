@@ -1,0 +1,74 @@
+\begin{tikzpicture}[
+    x=1pt,y=1pt,font=\normalsize,>=stealth,
+    ablock/.style={draw=black, fill=white, rectangle,
+                   line width=0.8pt, align=center, inner sep=5pt,
+                   minimum width=112pt, minimum height=30pt},
+    dblock/.style={draw=black, fill=white, rectangle,
+                   line width=0.8pt, align=center, inner sep=5pt,
+                   minimum width=88pt, minimum height=30pt},
+    gblock/.style={draw=black, fill=white, rectangle,
+                   line width=0.8pt, align=center, inner sep=5pt,
+                   minimum width=106pt, minimum height=50pt},
+    pflow/.style={->, line width=0.8pt, draw=black,
+                  shorten >=2pt, shorten <=2pt},
+    sflow/.style={->, line width=0.8pt, draw=black, dashed,
+                  shorten >=2pt, shorten <=2pt},
+]
+
+% ════════════════════════════════════════════════════════════════════
+%  攻击维度节点  (x=86, y=150/90/30)   y 间距 60pt（原 70pt）
+%  ablock minwidth=112pt: east=142, west=30
+% ════════════════════════════════════════════════════════════════════
+\node[ablock] (a1) at ( 86,150) {{\small\textbf{认知误导 / 角色操控}}};
+\node[ablock] (a2) at ( 86, 90) {{\small\textbf{指令重构 / 上下文前缀}}};
+\node[ablock] (a3) at ( 86, 30) {{\small\textbf{表面扰动 / 编码变换}}};
+
+% ════════════════════════════════════════════════════════════════════
+%  防御层节点  (x=262, y=150/90/30)
+%  dblock minwidth=88pt: east=306, west=218
+% ════════════════════════════════════════════════════════════════════
+\node[dblock] (d1) at (262,150) {{\small\textbf{输入层}}};
+\node[dblock] (d2) at (262, 90) {{\small\textbf{交互层}}};
+\node[dblock] (d3) at (262, 30) {{\small\textbf{输出层}}};
+
+% ════════════════════════════════════════════════════════════════════
+%  防御目标节点  (x=400, y=90)
+%  gblock minwidth=106pt: east=453, west=347
+% ════════════════════════════════════════════════════════════════════
+\node[gblock] (goal) at (400,90)
+    {{\small\textbf{防御目标}}\\[2pt]
+     \small 早期阻断\\[-1pt]
+     \small 过程限制 / 输出兜底};
+
+% ════════════════════════════════════════════════════════════════════
+%  实线箭头（主要防线）
+%  控制点在 attack.east(142)与 defense.west(218) 之间间隙内
+%  三曲线 y 顺序在中点附近：a1→d2(≈120) > a1→d3(≈92) > a2→d3(≈61) 不交叉
+% ════════════════════════════════════════════════════════════════════
+\draw[pflow] (a1.east) -- (d1.west);
+\draw[pflow] (a2.east) .. controls (175,90) and (202,42) .. (d3.west);
+\draw[pflow] (a3.east) -- (d3.west);
+
+% ════════════════════════════════════════════════════════════════════
+%  虚线箭头（辅助路径 / 上下文增强）
+% ════════════════════════════════════════════════════════════════════
+\draw[sflow] (a1.east) .. controls (168,143) and (200,96) .. (d2.west);
+\draw[sflow] (a1.east) .. controls (170,140) and (202,52) .. (d3.west);
+\draw[sflow] (a2.east) -- (d2.west);
+
+% ════════════════════════════════════════════════════════════════════
+%  防御层 → 防御目标
+% ════════════════════════════════════════════════════════════════════
+\draw[pflow] (d1.east) -- (goal.west);
+\draw[pflow] (d2.east) -- (goal.west);
+\draw[pflow] (d3.east) -- (goal.west);
+
+% ════════════════════════════════════════════════════════════════════
+%  图例  y=186：a1.north=165 上方约 21pt，间距明显增大
+% ════════════════════════════════════════════════════════════════════
+\draw[pflow, shorten >=0pt, shorten <=0pt] (18,186) -- (40,186);
+\node[anchor=west, font=\small] at (43,186) {主要防线};
+\draw[sflow, shorten >=0pt, shorten <=0pt] (108,186) -- (130,186);
+\node[anchor=west, font=\small] at (133,186) {辅助路径 / 上下文增强};
+
+\end{tikzpicture}

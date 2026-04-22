@@ -25,7 +25,7 @@ _RULES: list[tuple[str, re.Pattern[str], int]] = [
             r"bypass\s+safety|disable\s+guard|(?:绕过|规避|越过).{0,6}(?:安全|限制|审查|防护)|关闭.{0,4}(?:安全|审查|防护)",
             re.I,
         ),
-        35,
+        45,
     ),
     (
         "prompt_leakage",

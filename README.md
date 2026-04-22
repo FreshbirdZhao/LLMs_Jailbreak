@@ -123,9 +123,7 @@ Experiment/
 - `Redteam/redteam_results/`
 - `Jailbreak/jailbreak_results/`
 - `Defense/defense_results/`
-- `Results/keyword/`
-- `Results/llm/`
-- `Results/hybrid/`
+- `Results/final/`
 
 ## 3. 环境准备
 
@@ -283,9 +281,7 @@ Results/<mode>/<run_xxxx>/
 
 例如：
 
-- `Results/keyword/run_0001/`
-- `Results/llm/run_0003/`
-- `Results/hybrid/run_0002/`
+- `Results/final/run_0001/`
 
 ### 4.2 方式二：直接调用底层 Python CLI
 
@@ -344,37 +340,12 @@ python Jailbreak/jailbreak_tools/multi_jail/multi_jail.py \
 
 #### Analyze
 
-关键词判定：
+论文正式判定：
 
 ```bash
 python -m Analyze.cli \
-  --input-dir Jailbreak/jailbreak_results \
-  --judge-mode keyword \
-  --output-dir Results
-```
-
-LLM 判定：
-
-```bash
-python -m Analyze.cli \
-  --input-dir Jailbreak/jailbreak_results \
-  --judge-mode llm \
-  --llm-provider external \
-  --llm-model deepseek-chat \
-  --llm-base-url https://api.deepseek.com \
-  --llm-api-key "$DEEPSEEK_API_KEY" \
-  --output-dir Results
-```
-
-融合判定：
-
-```bash
-python -m Analyze.cli \
-  --input-dir Jailbreak/jailbreak_results \
-  --judge-mode hybrid \
-  --llm-provider ollama \
-  --llm-model qwen2:latest \
-  --llm-base-url http://127.0.0.1:11434 \
+  --input-dir Jailbreak/jailbreak_results/qwen2.5_3b_jailbreaking_dataset_v1_single_turn.jsonl \
+  --judge-mode paper \
   --output-dir Results
 ```
 
@@ -460,7 +431,6 @@ Results/<mode>/<run_xxxx>/
 
 - `records.csv`：逐条判定结果
 - `group_metrics.csv`：聚合指标
-- `input_sources.json`：输入来源记录
 - `figures/success_rate.png`
 - `figures/risk_distribution.png`
 - `figures/uncertainty_overview.png`
@@ -468,45 +438,17 @@ Results/<mode>/<run_xxxx>/
 
 ## 7. 判定模式说明
 
-`Analyze` 当前支持三种判定模式：
+`Analyze` 当前仅保留最终判定模式：
 
-### `keyword`
+### `paper`
 
-基于规则和关键词快速判定。
-
-优点：
-
-- 快
-- 成本低
-- 适合大规模初筛
-
-缺点：
-
-- 语义理解能力有限
-
-### `llm`
-
-调用一个判定模型来判断输出是否越狱。
+面向固定单轮结果文件，输出论文分析图和代表性案例。
 
 优点：
 
-- 语义理解更强
-- 对复杂输出更敏感
-
-缺点：
-
-- 慢
-- 受接口稳定性影响
-- 有调用成本
-
-### `hybrid`
-
-关键词判定和 LLM 判定融合。
-
-优点：
-
-- 在速度和效果之间折中
-- 能保留更多证据和冲突信息
+- 与当前论文口径一致
+- 输出稳定
+- 直接产出最终统计图
 
 ## 8. 当前实现特点
 
@@ -605,7 +547,6 @@ python -m unittest \
   tests.test_analyze_runner \
   tests.test_common \
   tests.test_runtime_config \
-  tests.test_analyze_llm_clients \
   tests.test_shared_llm_config \
   tests.test_redteam_clients \
   tests.test_single_jail_runtime

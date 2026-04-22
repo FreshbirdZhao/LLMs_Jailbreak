@@ -16,6 +16,7 @@ loader.py —— 数据集加载器
 import os
 import csv
 import json
+from pathlib import Path
 import yaml
 from typing import List, Dict, Any
 
@@ -27,7 +28,7 @@ class Loader:
     # ------------------------------
     # 单条样本标准化
     # ------------------------------
-    def _normalize_case(self, item: Dict[str, Any], fallback_id: str = None) -> Dict[str, Any]:
+    def _normalize_case(self, item: Dict[str, Any], fallback_id: str = None, dataset_name: str = "") -> Dict[str, Any]:
         """
         将一条原始样本转换为统一格式：
         - prompt: 兼容 prompt/text/query/question_zh
@@ -41,6 +42,8 @@ class Loader:
             or item.get("text")
             or item.get("query")
             or item.get("question_zh")
+            or item.get("question")
+            or item.get("goal")
             or ""
         )
         # 更稳健：去掉空格后再判断
@@ -48,7 +51,31 @@ class Loader:
 
         # 兼容不同字段
         category = item.get("category") or item.get("type") or item.get("一级领域") or "unknown"
-        attack_type = item.get("attack_type") or item.get("method") or item.get("二级领域") or "unknown"
+        attack_type = item.get("attack_type") or item.get("method") or item.get("二级领域") or ""
+        inferred_dimension = ""
+        if dataset_name.endswith("维度.csv"):
+            inferred_dimension = dataset_name[:-4]
+
+        attack_dimension = (
+            item.get("attack_dimension")
+            or item.get("dimension")
+            or item.get("technique_type")
+            or inferred_dimension
+            or ""
+        )
+        attack_method = item.get("attack_method") or item.get("prompt_type") or item.get("technique") or ""
+        source_prompt = item.get("source_prompt") or item.get("original_prompt") or item.get("input_prompt") or ""
+        source_file = item.get("source_file") or dataset_name or ""
+        origin = item.get("origin") or ""
+
+        if category == "unknown" and attack_dimension:
+            category = "static_dimension"
+        if not str(attack_type).strip() and attack_dimension:
+            attack_type = attack_dimension
+        if not attack_method and attack_dimension:
+            attack_method = "static_dataset"
+        if not str(attack_type).strip():
+            attack_type = "unknown"
 
         # ---------- 关键修复：ID 生成稳定化 ----------
         # 1) 优先用数据集已有 id/test_id
@@ -76,7 +103,17 @@ class Loader:
             "prompt": prompt,
             "category": category,
             "attack_type": attack_type,
+            "attack_dimension": str(attack_dimension).strip(),
+            "attack_method": str(attack_method).strip(),
+            "source_prompt": str(source_prompt).strip(),
+            "source_file": str(source_file).strip(),
+            "origin": str(origin).strip(),
         }
+
+        for key in ("variant_index", "model", "timestamp"):
+            value = item.get(key)
+            if value is not None and str(value).strip() != "":
+                normalized[key] = str(value).strip()
 
         # 校验：prompt 必须存在
         if not normalized["prompt"]:
@@ -88,6 +125,7 @@ class Loader:
     # JSON 加载
     # ------------------------------
     def load_from_json(self, path: str) -> List[Dict[str, Any]]:
+        dataset_name = Path(path).name
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
 
@@ -100,13 +138,14 @@ class Loader:
 
         cases = []
         for idx, item in enumerate(data, start=1):
-            cases.append(self._normalize_case(item, fallback_id=str(idx)))
+            cases.append(self._normalize_case(item, fallback_id=str(idx), dataset_name=dataset_name))
         return cases
 
     # ------------------------------
     # YAML 加载
     # ------------------------------
     def load_from_yaml(self, path: str) -> List[Dict[str, Any]]:
+        dataset_name = Path(path).name
         with open(path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
@@ -119,7 +158,7 @@ class Loader:
 
         cases = []
         for idx, item in enumerate(data, start=1):
-            cases.append(self._normalize_case(item, fallback_id=str(idx)))
+            cases.append(self._normalize_case(item, fallback_id=str(idx), dataset_name=dataset_name))
         return cases
 
     # ------------------------------
@@ -127,11 +166,12 @@ class Loader:
     # ------------------------------
     def load_from_csv(self, path: str) -> List[Dict[str, Any]]:
         cases = []
+        dataset_name = Path(path).name
         with open(path, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for idx, row in enumerate(reader, start=1):
                 # 关键：把 CSV 行号 idx 传入 normalize，用作稳定 fallback_id
-                cases.append(self._normalize_case(row, fallback_id=str(idx)))
+                cases.append(self._normalize_case(row, fallback_id=str(idx), dataset_name=dataset_name))
         return cases
 
     # ------------------------------

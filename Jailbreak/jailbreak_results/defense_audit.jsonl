@@ -1,0 +1,2 @@
+{"model_name": "demo-model", "test_id": "case-1", "layer": "output", "action": "redact", "risk_level": 1, "reasons": [], "raw_response": "safe response", "sanitized_response": "safe response"}
+{"model_name": "demo-model", "test_id": "case-1", "layer": "output", "action": "redact", "risk_level": 1, "reasons": [], "raw_response": "weather is calm today", "sanitized_response": "weather is calm today"}

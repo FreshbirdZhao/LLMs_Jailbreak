@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 from Defense.defense_mode.classifiers import KeywordRiskClassifier
+from Defense.defense_mode.config import DEFAULT_INPUT_CONFIG
 from Defense.defense_mode.rules import detect_prompt_injection
 from Defense.defense_mode.types import DefenseAction, DefenseContext, DefenseDecision
 
 
 class InputDefenseModule:
-    def __init__(self, block_threshold: int = 80, rewrite_threshold: int = 40) -> None:
+    def __init__(
+        self,
+        block_threshold: int = DEFAULT_INPUT_CONFIG["block_threshold"],
+        rewrite_threshold: int = DEFAULT_INPUT_CONFIG["rewrite_threshold"],
+    ) -> None:
         self.block_threshold = block_threshold
         self.rewrite_threshold = rewrite_threshold
         self.classifier = KeywordRiskClassifier()

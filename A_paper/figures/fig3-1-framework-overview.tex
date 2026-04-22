@@ -1,0 +1,90 @@
+\begin{tikzpicture}[
+    x=1pt, y=1pt, font=\normalsize, >=stealth,
+    block/.style={draw=black, fill=white, rectangle,
+                  line width=0.8pt, align=center, inner sep=5pt},
+    sarrow/.style={->, line width=0.8pt, draw=black,
+                   shorten >=2pt, shorten <=2pt},
+    darrow/.style={->, line width=0.8pt, draw=black, dashed,
+                   shorten >=2pt, shorten <=2pt},
+]
+
+% ════════════════════════════════════════════════════════════════════
+%  LEFT PANEL  (x: 4–145, y: 50–214)
+%  框宽 100pt，中心 x=75；两侧内边距：(75-50)-4=21pt
+% ════════════════════════════════════════════════════════════════════
+\draw[line width=0.8pt] (4,50) rectangle (145,214);
+\node[anchor=west, font=\bfseries\small] at (14,200) {输入侧};
+
+\node[block, minimum width=100pt, minimum height=36pt, inner xsep=2pt]
+    (static)  at (75,170) {{\small\textbf{静态攻击数据集}}\\\small 九类攻击维度};
+\node[block, minimum width=100pt, minimum height=36pt, inner xsep=2pt]
+    (redteam) at (75,122) {{\small\textbf{自动化红队扩展}}\\\small 代理模型生成变体};
+\node[block, minimum width=100pt, minimum height=36pt, inner xsep=2pt]
+    (multi)   at (75, 74) {{\small\textbf{多轮交互扩展}}\\\small 连续追问与策略调整};
+
+% ════════════════════════════════════════════════════════════════════
+%  MIDDLE PANEL  (x: 161–391, y: 50–214)   230pt 宽（原 190pt）
+%  间距不变（左右各 16pt）：左面板缩 20pt + 右面板缩 20pt 全部归入此框
+%  行1间距 70pt：load(206), call(276), judge(346)
+%    load.west=179，距左边界 161pt 有 18pt 间距
+%    judge.east=373，距右边界 391pt 有 18pt 间距
+%  行2关于面板中心 x=276 对称：review(230), agg(322)
+% ════════════════════════════════════════════════════════════════════
+\draw[line width=0.8pt] (161,50) rectangle (391,214);
+\node[anchor=west, font=\bfseries\small] at (171,200) {统一执行与分析流水线};
+
+% 行1 (y=152)
+\node[block, minimum width=54pt, minimum height=36pt]
+    (load)  at (206,152) {{\small\textbf{数据加载}}\\\small 标准化};
+\node[block, minimum width=54pt, minimum height=36pt]
+    (call)  at (276,152) {{\small\textbf{模型调用}}};
+\node[block, minimum width=54pt, minimum height=36pt]
+    (judge) at (346,152) {{\small\textbf{在线初判}}};
+
+\draw[sarrow] (load.east)  -- (call.west);
+\draw[sarrow] (call.east)  -- (judge.west);
+
+% 行2 (y=80)
+\node[block, minimum width=68pt, minimum height=36pt]
+    (review) at (230,80) {{\small\textbf{离线复核}}};
+\node[block, minimum width=68pt, minimum height=36pt]
+    (agg)    at (322,80) {{\small\textbf{聚合分析}}};
+
+% judge.south=134，下行 16pt 至 y=118（两行间隙，各框均不存在），-| review.north(98)
+\draw[sarrow] (judge.south) -- ++(0,-16) -| (review.north);
+\draw[sarrow] (review.east) -- (agg.west);
+
+% ════════════════════════════════════════════════════════════════════
+%  RIGHT PANEL  (x: 407–532, y: 50–214)
+%  框宽 110pt，中心 x=470；两侧内边距：(470-55)-407=8pt
+% ════════════════════════════════════════════════════════════════════
+\draw[line width=0.8pt] (407,50) rectangle (532,214);
+\node[anchor=west, font=\bfseries\small] at (417,200) {输出侧};
+
+\node[block, minimum width=110pt, minimum height=36pt, inner xsep=2pt]
+    (records) at (470,170) {\textbf{records.csv}\\\small 逐样本明细};
+\node[block, minimum width=110pt, minimum height=36pt, inner xsep=2pt]
+    (metrics) at (470,122) {\textbf{group\_metrics.csv}\\\small 分组统计};
+\node[block, minimum width=110pt, minimum height=36pt, inner xsep=2pt]
+    (cases)   at (470, 74) {{\small\textbf{案例分析}}\\\small 风险等级与证据片段};
+
+% ════════════════════════════════════════════════════════════════════
+%  跨面板虚线箭头
+% ════════════════════════════════════════════════════════════════════
+
+% 左→中：box.east(125,y) → +16 → x=141（左面板内，无框）|- load.west(179,152)
+\draw[darrow] (static.east)  -- ++(16,0) |- (load.west);
+\draw[darrow] (redteam.east) -- ++(16,0) |- (load.west);
+\draw[darrow] (multi.east)   -- ++(16,0) |- (load.west);
+
+% 中→右：路由点统一在间隙 (391–407) 内 x=395
+% judge.east(373) → +22 → x=395 |- records.west(415,170)
+\draw[darrow] (judge.east) -- ++(22,0) |- (records.west);
+
+% agg.east(356) → +39 → x=395（间隙内）后分叉
+% → metrics：(395,80) 上行至 y=122，再右至 metrics.west(415,122)
+% → cases：  (395,80) 下行至 y=74， 再右至 cases.west(415,74)
+\draw[darrow] (agg.east) -- ++(39,0) |- (metrics.west);
+\draw[darrow] (agg.east) -- ++(39,0) |- (cases.west);
+
+\end{tikzpicture}

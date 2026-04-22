@@ -384,10 +384,7 @@
 - `Analyze/pipeline.py`
 - `Analyze/multi_turn/cli.py`
 - `Analyze/multi_turn/pipeline.py`
-- `Analyze/judges/keyword_judge.py`
-- `Analyze/judges/llm_judge.py`
-- `Analyze/judges/ensemble_judge.py`
-- `Analyze/judges/structured_policy_judge.py`
+- `Analyze/judges/final_judge.py`
 - `Analyze/stats.py`
 - `Analyze/plotting.py`
 
@@ -401,38 +398,20 @@
 - `reasoning_tags`
 - `judge_source`
 
-其判定逻辑分为两层。
+当前静态实验判定器为：
 
-第一层是基础判定器：
-
-1. `KeywordJudge`
-2. `LLMJudge`
-3. `HybridJudge`
-
-第二层是 `StructuredPolicyJudge`，负责做最终结构约束。
+1. `FinalJudge`
 
 这种分层设计的意义在于：
 
-- 判定方式可以自由替换
 - 最终输出结构仍保持统一
-- 可以在保留灵活性的同时控制下游统计质量
+- 可以针对固定单轮结果文件做论文导向分析
 
-### 7.4 三种判定模式
+### 7.4 最终判定模式
 
-`keyword` 模式基于高召回规则匹配，适合快速筛查。
+`paper` 模式针对固定格式单轮结果文件，联合分析请求与响应内容，适合论文正式实验统计。
 
-`llm` 模式通过外部判定模型直接输出 JSON 结果，适合处理语义复杂情形。
-
-`hybrid` 模式同时运行关键词和 LLM 判定器，再基于冲突关系做融合，是当前更适合正式实验汇报的模式。
-
-### 7.5 结构化约束层
-
-`StructuredPolicyJudge` 的作用是防止基础判定器直接把不稳定结果带入统计。
-
-例如：
-
-- 如果判成 `yes` 或 `uncertain`，但没有证据片段，则自动降为 `uncertain`
-- 如果 `yes` 和 `risk_level=0` 同时出现，则自动修正风险等级
+`paper` 模式会直接输出危险越狱率、风险等级分布、不确定率、高风险占比和代表性案例表。
 
 从研究方法角度看，这是一种“后验约束”设计，目的是降低离线统计中的伪阳性或结构性噪声。
 

@@ -220,12 +220,20 @@
 
 \renewcommand{\eqref}[1]{\textup{{\normalfont（\ref{#1}）\normalfont}}} % 公式引用使用中文括号
 
-% 清除公式上下间距
-\AtBeginDocument{
-	\setlength{\abovedisplayskip}{6pt}
-	\setlength{\belowdisplayskip}{6pt}
-	\setlength{\abovedisplayshortskip}{0pt}
-	\setlength{\belowdisplayshortskip}{0pt} 
+% 清除公式上下间距：使用 \everydisplay 确保每条公式前均强制写入，
+% 防止 \normalsize / \zihao 等字号命令在运行时重置这些值
+\AtBeginDocument{%
+	\setlength{\abovedisplayskip}{4pt}%
+	\setlength{\belowdisplayskip}{4pt}%
+	\setlength{\abovedisplayshortskip}{4pt}%
+	\setlength{\belowdisplayshortskip}{4pt}%
+	\everydisplay\expandafter{%
+		\the\everydisplay
+		\abovedisplayskip=4pt\relax
+		\belowdisplayskip=4pt\relax
+		\abovedisplayshortskip=4pt\relax
+		\belowdisplayshortskip=4pt\relax
+	}%
 }
 
 \graphicspath{{figures/}} % 图片文件路径

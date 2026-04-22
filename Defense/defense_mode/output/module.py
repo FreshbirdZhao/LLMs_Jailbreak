@@ -38,7 +38,7 @@ class OutputDefenseModule:
         boost = 0
         if context.state in {"warning", "restricted"}:
             boost += 15
-        if context.attack_type == "multi_turn" and context.round_idx >= 2:
+        if context.round_idx >= 2:
             boost += 10
         if any(
             flag in {"persona_manipulation", "rule_exemption", "jailbreak_persona_bypass_combo", "jailbreak_high_risk_combo"}
@@ -47,11 +47,33 @@ class OutputDefenseModule:
             boost += 10
         return boost
 
+    def _narrative_risk(self, text: str, context: DefenseContext) -> int:
+        if not text:
+            return 0
+        if context.state not in {"warning", "restricted"}:
+            return 0
+        if not any(
+            flag in {"persona_manipulation", "rule_exemption", "jailbreak_persona_bypass_combo", "jailbreak_high_risk_combo"}
+            for flag in context.risk_flags
+        ):
+            return 0
+
+        sequencing = re.findall(r"\b(begin by|start by|then|next|after that|finally|finish by)\b", text, flags=re.I)
+        covert_ops = re.findall(
+            r"\b(front|handoff|transfer|participant|rotate|destroy notes|different location|separated)\b",
+            text,
+            flags=re.I,
+        )
+        if len(sequencing) >= 2 and len(covert_ops) >= 2:
+            return 35
+        return 0
+
     def process(self, context: DefenseContext) -> DefenseDecision:
         text = context.raw_response or ""
         hits = detect_output_risk(text)
         base_score = sum(h.score for h in hits)
-        score = min(100, base_score + self._context_boost(context))
+        narrative_score = self._narrative_risk(text, context)
+        score = min(100, base_score + narrative_score + self._context_boost(context))
         context.risk_score = max(context.risk_score, score)
         context.risk_flags.extend([h.name for h in hits])
         has_jailbreak_signal = any(
@@ -66,25 +88,52 @@ class OutputDefenseModule:
             decision = DefenseDecision(
                 action=DefenseAction.REPLACE,
                 risk_level=3,
-                reasons=[h.name for h in hits] or ["output_high_risk"],
+                reasons=[h.name for h in hits] or (["contextual_narrative_harm"] if narrative_score else ["output_high_risk"]),
                 rewritten_text=rewritten,
-                audit_payload={"output_score": score, "base_output_score": base_score},
+                audit_payload={
+                    "output_score": score,
+                    "base_output_score": base_score,
+                    "narrative_score": narrative_score,
+                },
             )
         elif score >= 20:
             rewritten = self._redact(text)
-            decision = DefenseDecision(
-                action=DefenseAction.REDACT,
-                risk_level=1,
-                reasons=[h.name for h in hits],
-                rewritten_text=rewritten,
-                audit_payload={"output_score": score, "base_output_score": base_score},
-            )
+            if rewritten == text and (has_jailbreak_signal or narrative_score >= 30 or context.state in {"warning", "restricted"}):
+                decision = DefenseDecision(
+                    action=DefenseAction.REPLACE,
+                    risk_level=3,
+                    reasons=[h.name for h in hits] or (["contextual_narrative_harm"] if narrative_score else ["output_high_risk"]),
+                    rewritten_text="I cannot help with harmful or illegal instructions.",
+                    audit_payload={
+                        "output_score": score,
+                        "base_output_score": base_score,
+                        "narrative_score": narrative_score,
+                        "redaction_effective": False,
+                    },
+                )
+            else:
+                decision = DefenseDecision(
+                    action=DefenseAction.REDACT,
+                    risk_level=1,
+                    reasons=[h.name for h in hits],
+                    rewritten_text=rewritten,
+                    audit_payload={
+                        "output_score": score,
+                        "base_output_score": base_score,
+                        "narrative_score": narrative_score,
+                        "redaction_effective": rewritten != text,
+                    },
+                )
         else:
             decision = DefenseDecision(
                 action=DefenseAction.ALLOW,
                 risk_level=0,
                 reasons=[],
-                audit_payload={"output_score": score, "base_output_score": base_score},
+                audit_payload={
+                    "output_score": score,
+                    "base_output_score": base_score,
+                    "narrative_score": narrative_score,
+                },
             )
 
         self.store.append(

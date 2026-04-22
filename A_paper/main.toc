@@ -1,106 +1,72 @@
 \contentsline {chapter}{摘\hspace {1em}要}{I}{section*.2}%
-\contentsline {chapter}{ABSTRACT}{III}{section*.3}%
+\contentsline {chapter}{ABSTRACT}{II}{section*.3}%
 \contentsline {chapter}{\numberline { 1\hspace {.3em}}绪论}{1}{chapter.1}%
 \contentsline {section}{\numberline {1.1}研究背景与意义}{1}{section.1.1}%
-\contentsline {section}{\numberline {1.2}国内外研究现状}{2}{section.1.2}%
-\contentsline {subsection}{\numberline {1.2.1}安全对齐方法研究}{2}{subsection.1.2.1}%
+\contentsline {section}{\numberline {1.2}国内外研究现状}{1}{section.1.2}%
+\contentsline {subsection}{\numberline {1.2.1}安全对齐方法研究}{1}{subsection.1.2.1}%
 \contentsline {subsection}{\numberline {1.2.2}越狱攻击方法研究}{2}{subsection.1.2.2}%
-\contentsline {subsection}{\numberline {1.2.3}防御方法与安全增强机制研究}{3}{subsection.1.2.3}%
-\contentsline {section}{\numberline {1.3}研究问题与本文主要工作}{4}{section.1.3}%
-\contentsline {section}{\numberline {1.4}论文结构安排}{5}{section.1.4}%
-\contentsline {chapter}{\numberline { 2\hspace {.3em}}安全对齐机制与漏洞机理分析}{6}{chapter.2}%
-\contentsline {section}{\numberline {2.1}大语言模型及安全对齐技术基础}{6}{section.2.1}%
-\contentsline {section}{\numberline {2.2}大语言模型概述}{6}{section.2.2}%
-\contentsline {section}{\numberline {2.3}安全对齐技术体系}{7}{section.2.3}%
-\contentsline {section}{\numberline {2.4}主流对齐方法及其作用机理}{9}{section.2.4}%
-\contentsline {section}{\numberline {2.5}安全对齐中的目标冲突问题}{11}{section.2.5}%
-\contentsline {section}{\numberline {2.6}对齐表层性与行为泛化局限}{13}{section.2.6}%
-\contentsline {section}{\numberline {2.7}上下文与交互过程中的对齐失效}{14}{section.2.7}%
-\contentsline {section}{\numberline {2.8}本章小结}{16}{section.2.8}%
-\contentsline {chapter}{\numberline { 3\hspace {.3em}}多维越狱攻击框架与实验设计}{17}{chapter.3}%
-\contentsline {section}{\numberline {3.1}越狱攻击问题定义与威胁模型}{17}{section.3.1}%
-\contentsline {section}{\numberline {3.2}多维越狱攻击框架设计}{19}{section.3.2}%
-\contentsline {section}{\numberline {3.3}九类静态攻击维度与测试集构建}{20}{section.3.3}%
-\contentsline {subsection}{\numberline {3.3.1}编码扰动维度}{21}{subsection.3.3.1}%
-\contentsline {subsection}{\numberline {3.3.2}角色扮演维度}{21}{subsection.3.3.2}%
-\contentsline {subsection}{\numberline {3.3.3}认知误导维度}{21}{subsection.3.3.3}%
-\contentsline {subsection}{\numberline {3.3.4}上下文操控维度}{22}{subsection.3.3.4}%
-\contentsline {subsection}{\numberline {3.3.5}语言变体维度}{22}{subsection.3.3.5}%
-\contentsline {subsection}{\numberline {3.3.6}指令重构维度}{23}{subsection.3.3.6}%
-\contentsline {subsection}{\numberline {3.3.7}对抗后缀维度}{23}{subsection.3.3.7}%
-\contentsline {subsection}{\numberline {3.3.8}格式伪装维度}{23}{subsection.3.3.8}%
-\contentsline {subsection}{\numberline {3.3.9}复合混合维度}{24}{subsection.3.3.9}%
-\contentsline {section}{\numberline {3.4}自动化红队攻击扩展机制}{25}{section.3.4}%
-\contentsline {section}{\numberline {3.5}多轮交互式越狱扩展机制}{25}{section.3.5}%
-\contentsline {section}{\numberline {3.6}统一实验流程与评估指标}{27}{section.3.6}%
-\contentsline {section}{\numberline {3.7}本章小结}{29}{section.3.7}%
-\contentsline {chapter}{\numberline { 4\hspace {.3em}}多维越狱攻击实验评测与结果分析}{30}{chapter.4}%
-\contentsline {section}{\numberline {4.1}实验目标与实验设置}{30}{section.4.1}%
-\contentsline {section}{\numberline {4.2}静态攻击结果的总体特征}{30}{section.4.2}%
-\contentsline {subsection}{\numberline {4.2.1}整体成功率与风险分布特征}{30}{subsection.4.2.1}%
-\contentsline {subsection}{\numberline {4.2.2}跨模型共性脆弱性概览}{32}{subsection.4.2.2}%
-\contentsline {section}{\numberline {4.3}不同攻击维度的脆弱性比较}{33}{section.4.3}%
-\contentsline {subsection}{\numberline {4.3.1}语义包装类攻击的突出作用}{33}{subsection.4.3.1}%
-\contentsline {subsection}{\numberline {4.3.2}结构重构与上下文前缀的持续影响}{34}{subsection.4.3.2}%
-\contentsline {subsection}{\numberline {4.3.3}表面扰动类攻击的边界意义}{35}{subsection.4.3.3}%
-\contentsline {section}{\numberline {4.4}风险等级分布与边界模糊性分析}{36}{section.4.4}%
-\contentsline {subsection}{\numberline {4.4.1}低直接成功率下的高不确定性特征}{36}{subsection.4.4.1}%
-\contentsline {subsection}{\numberline {4.4.2}高风险样本的分布特点}{37}{subsection.4.4.2}%
-\contentsline {section}{\numberline {4.5}典型案例分析}{37}{section.4.5}%
-\contentsline {subsection}{\numberline {4.5.1}认知误导样本揭示的任务解释偏移}{37}{subsection.4.5.1}%
-\contentsline {subsection}{\numberline {4.5.2}示例链与结构化前缀的诱导效应}{38}{subsection.4.5.2}%
-\contentsline {subsection}{\numberline {4.5.3}低成功维度中的残余鲁棒性}{39}{subsection.4.5.3}%
-\contentsline {section}{\numberline {4.6}自动化红队生成的补充实验结果}{39}{section.4.6}%
-\contentsline {section}{\numberline {4.7}多轮交互攻击的补充实验结果}{40}{section.4.7}%
-\contentsline {section}{\numberline {4.8}对齐失效机理讨论}{41}{section.4.8}%
-\contentsline {subsection}{\numberline {4.8.1}目标冲突导致的脆弱性暴露}{41}{subsection.4.8.1}%
-\contentsline {subsection}{\numberline {4.8.2}表层对齐的泛化局限}{41}{subsection.4.8.2}%
-\contentsline {subsection}{\numberline {4.8.3}上下文依赖与过程脆弱性的静态显现}{41}{subsection.4.8.3}%
-\contentsline {section}{\numberline {4.9}本章小结}{42}{section.4.9}%
-\contentsline {chapter}{\numberline { 5\hspace {.3em}}面向越狱攻击的分层防御方案}{43}{chapter.5}%
-\contentsline {section}{\numberline {5.1}防御问题定义与设计目标}{43}{section.5.1}%
-\contentsline {section}{\numberline {5.2}分层防御总体框架}{44}{section.5.2}%
-\contentsline {subsection}{\numberline {5.2.1}分层防御的总体思路}{44}{subsection.5.2.1}%
-\contentsline {subsection}{\numberline {5.2.2}防御决策与风险传递机制}{44}{subsection.5.2.2}%
-\contentsline {section}{\numberline {5.3}输入层防御机制}{46}{section.5.3}%
-\contentsline {subsection}{\numberline {5.3.1}输入层防御的功能定位}{46}{subsection.5.3.1}%
-\contentsline {subsection}{\numberline {5.3.2}基于规则与分类器的风险识别}{46}{subsection.5.3.2}%
-\contentsline {subsection}{\numberline {5.3.3}输入层的阻断与改写策略}{48}{subsection.5.3.3}%
-\contentsline {section}{\numberline {5.4}交互层防御机制}{48}{section.5.4}%
-\contentsline {subsection}{\numberline {5.4.1}交互层防御的功能定位}{48}{subsection.5.4.1}%
-\contentsline {subsection}{\numberline {5.4.2}风险累积与诱导行为检测}{49}{subsection.5.4.2}%
-\contentsline {subsection}{\numberline {5.4.3}多轮场景下的限制与截断策略}{50}{subsection.5.4.3}%
-\contentsline {section}{\numberline {5.5}输出层防御机制}{50}{section.5.5}%
-\contentsline {subsection}{\numberline {5.5.1}输出层防御的功能定位}{50}{subsection.5.5.1}%
-\contentsline {subsection}{\numberline {5.5.2}面向危险内容的输出风险识别}{51}{subsection.5.5.2}%
-\contentsline {subsection}{\numberline {5.5.3}输出替换、脱敏与审计记录策略}{51}{subsection.5.5.3}%
-\contentsline {section}{\numberline {5.6}三层防御的协同作用与适用范围}{52}{section.5.6}%
-\contentsline {subsection}{\numberline {5.6.1}分层协同的必要性分析}{52}{subsection.5.6.1}%
-\contentsline {subsection}{\numberline {5.6.2}面向多维攻击框架的防御映射关系}{53}{subsection.5.6.2}%
-\contentsline {section}{\numberline {5.7}防御效果评估方案}{53}{section.5.7}%
-\contentsline {subsection}{\numberline {5.7.1}防御实验设置}{53}{subsection.5.7.1}%
-\contentsline {subsection}{\numberline {5.7.2}防御效果评估指标}{54}{subsection.5.7.2}%
-\contentsline {subsection}{\numberline {5.7.3}结果分析位置预留}{55}{subsection.5.7.3}%
-\contentsline {section}{\numberline {5.8}本章小结}{55}{section.5.8}%
-\contentsline {chapter}{\numberline { 6\hspace {.3em}}总结与展望}{56}{chapter.6}%
-\contentsline {section}{\numberline {6.1}全文工作总结}{56}{section.6.1}%
-\contentsline {section}{\numberline {6.2}本文主要研究内容与结论}{57}{section.6.2}%
-\contentsline {subsection}{\numberline {6.2.1}安全对齐漏洞机理方面的研究总结}{57}{subsection.6.2.1}%
-\contentsline {subsection}{\numberline {6.2.2}越狱攻击体系构建与实验评估方面的研究总结}{57}{subsection.6.2.2}%
-\contentsline {subsection}{\numberline {6.2.3}分层防御方案方面的研究总结}{58}{subsection.6.2.3}%
-\contentsline {section}{\numberline {6.3}本文的主要创新点}{58}{section.6.3}%
-\contentsline {subsection}{\numberline {6.3.1}从统一机理视角分析安全对齐漏洞}{58}{subsection.6.3.1}%
-\contentsline {subsection}{\numberline {6.3.2}构建面向多维越狱攻击的统一实验框架}{58}{subsection.6.3.2}%
-\contentsline {subsection}{\numberline {6.3.3}提出面向全过程风险控制的三层防御思路}{59}{subsection.6.3.3}%
-\contentsline {section}{\numberline {6.4}研究局限与不足}{59}{section.6.4}%
-\contentsline {subsection}{\numberline {6.4.1}实验覆盖范围仍有进一步扩展空间}{59}{subsection.6.4.1}%
-\contentsline {subsection}{\numberline {6.4.2}攻击场景与系统环境仍相对有限}{59}{subsection.6.4.2}%
-\contentsline {subsection}{\numberline {6.4.3}分层防御方案的泛化能力仍需持续验证}{59}{subsection.6.4.3}%
-\contentsline {section}{\numberline {6.5}未来研究展望}{60}{section.6.5}%
-\contentsline {subsection}{\numberline {6.5.1}构建更完整的攻防一体化评测体系}{60}{subsection.6.5.1}%
-\contentsline {subsection}{\numberline {6.5.2}面向复杂交互与智能体场景开展安全研究}{60}{subsection.6.5.2}%
-\contentsline {subsection}{\numberline {6.5.3}探索更具泛化能力的鲁棒防御方法}{60}{subsection.6.5.3}%
-\contentsline {subsection}{\numberline {6.5.4}推动安全对齐从经验约束走向机制约束}{60}{subsection.6.5.4}%
-\contentsline {section}{\numberline {6.6}本章小结}{61}{section.6.6}%
-\contentsline {chapter}{参考文献}{62}{section*.47}%
-\contentsline {chapter}{致谢}{65}{section*.49}%
+\contentsline {subsection}{\numberline {1.2.3}防御方法与安全增强机制研究}{2}{subsection.1.2.3}%
+\contentsline {section}{\numberline {1.3}研究问题与本文主要工作}{2}{section.1.3}%
+\contentsline {section}{\numberline {1.4}论文结构安排}{3}{section.1.4}%
+\contentsline {chapter}{\numberline { 2\hspace {.3em}}安全对齐机制与漏洞机理分析}{4}{chapter.2}%
+\contentsline {section}{\numberline {2.1}大语言模型概述}{4}{section.2.1}%
+\contentsline {section}{\numberline {2.2}安全对齐技术体系}{4}{section.2.2}%
+\contentsline {section}{\numberline {2.3}主流对齐方法及其作用机理}{5}{section.2.3}%
+\contentsline {section}{\numberline {2.4}安全对齐中的目标冲突问题}{6}{section.2.4}%
+\contentsline {section}{\numberline {2.5}对齐表层性与行为泛化局限}{7}{section.2.5}%
+\contentsline {section}{\numberline {2.6}上下文与交互过程中的对齐失效}{7}{section.2.6}%
+\contentsline {chapter}{\numberline { 3\hspace {.3em}}多维越狱攻击框架与实验设计}{9}{chapter.3}%
+\contentsline {section}{\numberline {3.1}越狱攻击问题定义与威胁模型}{9}{section.3.1}%
+\contentsline {section}{\numberline {3.2}多维越狱攻击框架设计}{10}{section.3.2}%
+\contentsline {section}{\numberline {3.3}九类静态攻击维度与测试集构建}{11}{section.3.3}%
+\contentsline {section}{\numberline {3.4}动态攻击扩展：自动化红队与多轮越狱机制}{11}{section.3.4}%
+\contentsline {subsection}{\numberline {3.4.1}自动化红队攻击变体生成}{12}{subsection.3.4.1}%
+\contentsline {subsection}{\numberline {3.4.2}多轮交互式越狱}{13}{subsection.3.4.2}%
+\contentsline {section}{\numberline {3.5}统一实验流程与评估指标}{13}{section.3.5}%
+\contentsline {chapter}{\numberline { 4\hspace {.3em}}多维越狱攻击实验评测与结果分析}{15}{chapter.4}%
+\contentsline {section}{\numberline {4.1}实验设置}{15}{section.4.1}%
+\contentsline {section}{\numberline {4.2}总体结果概览}{15}{section.4.2}%
+\contentsline {section}{\numberline {4.3}攻击维度分层分析}{16}{section.4.3}%
+\contentsline {subsection}{\numberline {4.3.1}认知误导的压倒性优势}{16}{subsection.4.3.1}%
+\contentsline {subsection}{\numberline {4.3.2}结构性攻击的持续压力}{16}{subsection.4.3.2}%
+\contentsline {subsection}{\numberline {4.3.3}表面扰动类维度的边界探测价值}{17}{subsection.4.3.3}%
+\contentsline {section}{\numberline {4.4}边界模糊性的测量与意义}{18}{section.4.4}%
+\contentsline {subsection}{\numberline {4.4.1}高不确定率是独立的安全风险信号}{18}{subsection.4.4.1}%
+\contentsline {subsection}{\numberline {4.4.2}成功率与不确定率共同刻画攻击维度特征}{18}{subsection.4.4.2}%
+\contentsline {section}{\numberline {4.5}失效机理溯源}{19}{section.4.5}%
+\contentsline {section}{\numberline {4.6}动态攻击扩展的补充验证}{19}{section.4.6}%
+\contentsline {subsection}{\numberline {4.6.1}自动化红队变体生成}{19}{subsection.4.6.1}%
+\contentsline {subsection}{\numberline {4.6.2}多轮越狱的累积效应}{20}{subsection.4.6.2}%
+\contentsline {chapter}{\numberline { 5\hspace {.3em}}面向越狱攻击的分层防御方案}{22}{chapter.5}%
+\contentsline {section}{\numberline {5.1}防御问题定义与设计目标}{22}{section.5.1}%
+\contentsline {section}{\numberline {5.2}分层防御总体框架}{22}{section.5.2}%
+\contentsline {subsection}{\numberline {5.2.1}分层防御的总体思路}{22}{subsection.5.2.1}%
+\contentsline {subsection}{\numberline {5.2.2}防御决策与风险传递机制}{23}{subsection.5.2.2}%
+\contentsline {section}{\numberline {5.3}输入层防御机制}{23}{section.5.3}%
+\contentsline {subsection}{\numberline {5.3.1}输入层防御的功能定位}{23}{subsection.5.3.1}%
+\contentsline {subsection}{\numberline {5.3.2}基于规则与分类器的风险识别}{24}{subsection.5.3.2}%
+\contentsline {subsection}{\numberline {5.3.3}输入层的阻断与改写策略}{24}{subsection.5.3.3}%
+\contentsline {section}{\numberline {5.4}交互层防御机制}{25}{section.5.4}%
+\contentsline {subsection}{\numberline {5.4.1}交互层防御的功能定位}{25}{subsection.5.4.1}%
+\contentsline {subsection}{\numberline {5.4.2}风险累积与诱导行为检测}{25}{subsection.5.4.2}%
+\contentsline {subsection}{\numberline {5.4.3}多轮场景下的限制与截断策略}{26}{subsection.5.4.3}%
+\contentsline {section}{\numberline {5.5}输出层防御机制}{26}{section.5.5}%
+\contentsline {subsection}{\numberline {5.5.1}输出层防御的功能定位}{26}{subsection.5.5.1}%
+\contentsline {subsection}{\numberline {5.5.2}面向危险内容的输出风险识别}{27}{subsection.5.5.2}%
+\contentsline {subsection}{\numberline {5.5.3}输出干预与审计记录策略}{27}{subsection.5.5.3}%
+\contentsline {section}{\numberline {5.6}三层防御的协同作用与攻击面映射}{27}{section.5.6}%
+\contentsline {subsection}{\numberline {5.6.1}分层协同的必要性分析}{27}{subsection.5.6.1}%
+\contentsline {subsection}{\numberline {5.6.2}面向多维攻击框架的防御映射关系}{28}{subsection.5.6.2}%
+\contentsline {section}{\numberline {5.7}防御效果评估与结果分析}{29}{section.5.7}%
+\contentsline {subsection}{\numberline {5.7.1}实验设置与评测口径}{29}{subsection.5.7.1}%
+\contentsline {subsection}{\numberline {5.7.2}单轮静态攻击防御效果}{29}{subsection.5.7.2}%
+\contentsline {subsection}{\numberline {5.7.3}自动化变体攻击的防御适应性}{31}{subsection.5.7.3}%
+\contentsline {subsection}{\numberline {5.7.4}多轮越狱场景下的防御效果}{32}{subsection.5.7.4}%
+\contentsline {subsection}{\numberline {5.7.5}防御局限性分析}{33}{subsection.5.7.5}%
+\contentsline {chapter}{\numberline { 6\hspace {.3em}}总结与展望}{34}{chapter.6}%
+\contentsline {section}{\numberline {6.1}研究工作回顾}{34}{section.6.1}%
+\contentsline {section}{\numberline {6.2}主要创新点}{35}{section.6.2}%
+\contentsline {section}{\numberline {6.3}工作局限}{35}{section.6.3}%
+\contentsline {section}{\numberline {6.4}后续研究方向}{35}{section.6.4}%
+\contentsline {chapter}{参考文献}{37}{section*.20}%
+\contentsline {chapter}{致谢}{40}{section*.22}%

@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import time
 
-import httpx
+try:
+    import httpx
+except ModuleNotFoundError:  # pragma: no cover - optional in local test-only environments
+    httpx = None
 
 from Defense.defense_mode import (
     DefenseEngine,
@@ -11,13 +14,14 @@ from Defense.defense_mode import (
     OutputDefenseModule,
     load_defense_config,
 )
+from Defense.defense_mode.config import DEFAULT_INPUT_CONFIG, DEFAULT_INTERACTION_CONFIG, DEFAULT_OUTPUT_CONFIG
 from model_registry import resolve_model
 
 
 class MultiTurnModelTester:
     def __init__(self, models_config_path: str = "models.yaml", timeout: int = 120):
         self.models_config_path = models_config_path
-        self.client = httpx.AsyncClient(timeout=timeout)
+        self.client = httpx.AsyncClient(timeout=timeout) if httpx is not None else None
 
     def _build_openai_payload(self, model: dict, messages: list[dict[str, str]]) -> dict:
         return {"model": model["model"], "messages": messages}
@@ -29,6 +33,8 @@ class MultiTurnModelTester:
 
         start = time.time()
         try:
+            if self.client is None:
+                raise RuntimeError("httpx is not installed")
             resp = await self.client.post(url, json=payload, headers=headers)
             resp.raise_for_status()
             data = resp.json()
@@ -43,6 +49,8 @@ class MultiTurnModelTester:
 
         start = time.time()
         try:
+            if self.client is None:
+                raise RuntimeError("httpx is not installed")
             resp = await self.client.post(url, json=payload)
             resp.raise_for_status()
             data = resp.json()
@@ -85,23 +93,23 @@ class MultiTurnModelTester:
         if "input" in enabled_layers:
             input_cfg = cfg.get("input", {})
             input_module = InputDefenseModule(
-                block_threshold=int(input_cfg.get("block_threshold", 80)),
-                rewrite_threshold=int(input_cfg.get("rewrite_threshold", 40)),
+                block_threshold=int(input_cfg.get("block_threshold", DEFAULT_INPUT_CONFIG["block_threshold"])),
+                rewrite_threshold=int(input_cfg.get("rewrite_threshold", DEFAULT_INPUT_CONFIG["rewrite_threshold"])),
             )
 
         if "interaction" in enabled_layers:
             inter_cfg = cfg.get("interaction", {})
             interaction_module = InteractionDefenseModule(
-                block_risk=int(inter_cfg.get("block_risk", 80)),
-                warning_risk=int(inter_cfg.get("warning_risk", 40)),
-                max_round=int(inter_cfg.get("max_round", 3)),
+                block_risk=int(inter_cfg.get("block_risk", DEFAULT_INTERACTION_CONFIG["block_risk"])),
+                warning_risk=int(inter_cfg.get("warning_risk", DEFAULT_INTERACTION_CONFIG["warning_risk"])),
+                max_round=int(inter_cfg.get("max_round", DEFAULT_INTERACTION_CONFIG["max_round"])),
             )
 
         if "output" in enabled_layers:
             out_cfg = cfg.get("output", {})
             output_module = OutputDefenseModule(
-                archive_path=out_cfg.get("archive_path", "Jailbreak/jailbreak_results/defense_audit.jsonl"),
-                archive_format=str(out_cfg.get("archive_format", defense_archive_format)),
+                archive_path=out_cfg.get("archive_path", DEFAULT_OUTPUT_CONFIG["archive_path"]),
+                archive_format=str(out_cfg.get("archive_format", defense_archive_format or DEFAULT_OUTPUT_CONFIG["archive_format"])),
             )
 
         return DefenseEngine(
@@ -111,4 +119,5 @@ class MultiTurnModelTester:
         )
 
     async def aclose(self) -> None:
-        await self.client.aclose()
+        if self.client is not None:
+            await self.client.aclose()
