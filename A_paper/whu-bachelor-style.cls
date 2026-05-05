@@ -167,10 +167,35 @@
 
 %%% ---- 定义字体 ----- %%%
 \renewcommand{\normalsize}{\zihao{-4}}         % 正常字号
-% 设置英文字体为 Times New Roman
-\setmainfont[Ligatures=Rare]{Times New Roman}
-\setsansfont[Ligatures=Rare]{Times New Roman}
-\setmonofont[Ligatures=Rare]{Times New Roman}
+% 优先使用项目内置 Times 字体文件，避免依赖系统字体安装状态
+\IfFileExists{fonts/times.ttf}{
+  \setmainfont{times.ttf}[
+    Path = fonts/,
+    BoldFont = timesbd.ttf,
+    ItalicFont = timesi.ttf,
+    BoldItalicFont = timesbi.ttf,
+    Ligatures = Rare
+  ]
+  \setsansfont{times.ttf}[
+    Path = fonts/,
+    BoldFont = timesbd.ttf,
+    ItalicFont = timesi.ttf,
+    BoldItalicFont = timesbi.ttf,
+    Ligatures = Rare
+  ]
+  \setmonofont{times.ttf}[
+    Path = fonts/,
+    BoldFont = timesbd.ttf,
+    ItalicFont = timesi.ttf,
+    BoldItalicFont = timesbi.ttf,
+    Ligatures = Rare
+  ]
+}{
+  % 回退到系统字体族名
+  \setmainfont[Ligatures=Rare]{Times New Roman}
+  \setsansfont[Ligatures=Rare]{Times New Roman}
+  \setmonofont[Ligatures=Rare]{Times New Roman}
+}
 
 \renewcommand{\algorithmcfname}{算法}          % 算法两字用中文显示
 
