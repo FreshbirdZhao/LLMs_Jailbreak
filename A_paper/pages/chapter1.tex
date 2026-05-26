@@ -4,11 +4,11 @@
 
 \section{研究背景与意义}
 
-大语言模型（Large Language Models, LLMs）的能力在近几年快速扩展。基于Transformer架构的大规模预训练赋予了模型较强的指令理解、复杂推理和多轮对话能力，使其在智能问答、内容生成和代码辅助等场景中得到广泛应用，并逐步向多模态融合与自主智能体方向延伸\cite{vaswani2017attention,touvron2023llama}。
+大语言模型（Large Language Models, LLMs）的能力在近几年快速扩展。基于Transformer架构的大规模预训练赋予了模型较强的指令理解、复杂推理和多轮对话能力，使其在智能问答、内容生成和代码辅助等场景中得到广泛应用，并逐步向多模态融合与自主智能体方向延伸\cite{vaswani2017attention}。
 
 能力扩展的同时，安全问题也随之变得复杂。LLMs的训练数据来源广泛，难以避免地包含偏差或有害内容，在缺乏有效约束时，模型可能输出涉及暴力、隐私泄露或误导性信息的内容\cite{markov2022holistic}。在长上下文、多轮交互和工具调用等场景下，模型行为的可预测性进一步下降。当LLMs以智能体形态嵌入现实系统后，安全威胁的性质也发生了变化：一旦模型被诱导执行有害操作，影响可能已超出文本输出范畴，产生更加严重的系统级后果\cite{hagendorff2026jailbreakagents}。
 
-为约束大模型的行为，研究界提出了以SFT、RLHF和DPO为代表的安全对齐方法\cite{ouyang2022instructgpt,rafailov2023dpo}\cite{hong2024orpo,askell2021assistant}，通过引入人类价值偏好与安全约束，在生成能力与安全性之间寻求平衡。但现有方法在复杂语境和分布外输入场景下的鲁棒性有所不足，对精心构造的攻击缺乏可靠防护。系统研究安全对齐机制及其潜在漏洞，有助于从机制层面厘清约束的有效范围与失效条件，也可为后续风险评估和防御设计提供依据。
+为约束大模型的行为，研究界提出了以SFT、RLHF和DPO为代表的安全对齐方法\cite{ouyang2022instructgpt,rafailov2023dpo}\cite{hong2024orpo,christiano2017preferences}，通过引入人类价值偏好与安全约束，在生成能力与安全性之间寻求平衡。但现有方法在复杂语境和分布外输入场景下的鲁棒性有所不足，对精心构造的攻击缺乏可靠防护。系统研究安全对齐机制及其潜在漏洞，有助于从机制层面厘清约束的有效范围与失效条件，也可为后续风险评估和防御设计提供依据。
 
 \section{国内外研究现状}
 
@@ -16,17 +16,17 @@
 
 \subsection{安全对齐方法研究}
 
-约束LLMs生成安全内容的主要手段是在预训练完成后进行后训练对齐。SFT通过构建高质量指令数据集使模型学习安全响应模式；RLHF引入奖励模型，以人类偏好数据引导生成策略\cite{christiano2017preferences,ouyang2022instructgpt}；基于人类反馈的摘要学习与有害性抑制实验也进一步验证了该路径的可行性\cite{stiennon2020summarize,bai2022helpfulharmless}。DPO省去了单独的奖励模型训练步骤，直接在偏好数据上调整模型分布，兼顾对齐效果与训练稳定性\cite{rafailov2023dpo}。此外，ORPO、RSO等方法从不同角度改进了偏好学习框架，进一步拓展了后训练对齐的技术路径\cite{hong2024orpo}。现有方法在常规场景下效果较好，但面对分布外输入和对抗性构造时，鲁棒性仍有不足。
+约束LLMs生成安全内容的主要手段是在预训练完成后进行后训练对齐。SFT通过构建高质量指令数据集使模型学习安全响应模式；RLHF引入奖励模型，以人类偏好数据引导生成策略\cite{christiano2017preferences,ouyang2022instructgpt}；基于人类反馈的摘要学习也进一步验证了这一后训练路径的可行性\cite{stiennon2020summarize}。DPO省去了单独的奖励模型训练步骤，直接在偏好数据上调整模型分布，兼顾对齐效果与训练稳定性\cite{rafailov2023dpo}。此外，ORPO、RSO等方法从不同角度改进了偏好学习框架，进一步拓展了后训练对齐的技术路径\cite{hong2024orpo}。现有方法在常规场景下效果较好，但面对分布外输入和对抗性构造时，鲁棒性仍有不足。
 
 \subsection{越狱攻击方法研究}
 
-研究者发现，经过对齐的模型在面对精心构造的输入时仍容易被诱导输出违规内容，此类攻击被称为越狱攻击（jailbreak attacks）\cite{zou2023universal,chao2024pair}。攻击者往往无需接触模型内部参数，仅凭提示设计即可取得较高成功率。
+研究者发现，经过对齐的模型在面对精心构造的输入时仍容易被诱导输出违规内容，此类攻击被称为越狱攻击（jailbreak attacks）\cite{chao2024pair,wei2023jailbroken}。攻击者往往无需接触模型内部参数，仅凭提示设计即可取得较高成功率。
 
-现有攻击方法可大致归为三类：手工设计的提示改写（角色扮演、语义替换、编码转换等）\cite{zeng2024johnny,jiang2024artprompt}；基于梯度或搜索的对抗性后缀优化，GCG是其中的代表性工作\cite{zou2023universal,zhao2024accelerating}；以及利用辅助语言模型自动迭代优化提示的红队攻击，如PAIR和TAP\cite{chao2024pair,mehrotra2024tap}。三类方法分别从语义操控、概率优化和多轮交互角度揭示了对齐机制的不同脆弱性。
+现有攻击方法可大致归为三类：手工设计的提示改写（角色扮演、语义替换、编码转换等）\cite{zeng2024johnny,jiang2024artprompt}；基于梯度或搜索的对抗性后缀优化，GCG及其加速变体是其中的代表性工作\cite{zhao2024accelerating,wallace2019triggers}；以及利用辅助语言模型自动迭代优化提示的红队攻击，如PAIR和TAP\cite{chao2024pair,mehrotra2024tap}。三类方法分别从语义操控、概率优化和多轮交互角度揭示了对齐机制的不同脆弱性。
 
 \subsection{防御方法与安全增强机制研究}
 
-防御研究通常围绕训练阶段和推理阶段两个方向展开。训练阶段的方法主要通过对抗数据增强或针对性微调，提升模型对恶意输入的识别与拒绝能力\cite{phute2024llmselfdefense}；系统性红队研究则为训练数据增强与风险发现提供了重要支撑\cite{ganguli2022redteaming,perez2022redteaming}。推理阶段则通过输入过滤、提示改写和输出审查等机制进行运行时拦截，其中基于辅助模型的输出审查在多个实际系统中已有部署\cite{rebedea2023nemo,markov2022holistic}。近年来亦有工作尝试将两个阶段的防护措施整合为全生命周期防御框架，以应对多样化攻击场景。
+防御研究通常围绕训练阶段和推理阶段两个方向展开。训练阶段的方法主要通过对抗数据增强或针对性微调，提升模型对恶意输入的识别与拒绝能力\cite{phute2024llmselfdefense}；系统性红队研究则为训练数据增强与风险发现提供了重要支撑\cite{perez2022redteaming}。推理阶段则通过输入过滤、提示改写和输出审查等机制进行运行时拦截，其中基于辅助模型的输出审查在多个实际系统中已有部署\cite{rebedea2023nemo,markov2022holistic}。近年来亦有工作尝试将两个阶段的防护措施整合为全生命周期防御框架，以应对多样化攻击场景。
 
 \section{研究问题与本文主要工作}
 

@@ -112,7 +112,7 @@
 
 %%% ---- 图表标题设置 ----- %%%
 \RequirePackage[labelsep=quad]{caption}     % 序号之后空一格写标题
-\captionsetup[table]{font={small},labelfont=bf,textfont=normalfont}
+\captionsetup[table]{position=bottom,font={small},labelfont=bf,textfont=normalfont,justification=centering,singlelinecheck=false}
 \captionsetup[figure]{font={small},labelfont=bf,textfont=normalfont}
 \renewcommand\figurename{\bf\songti\zihao{5} 图}
 \renewcommand\tablename{\songti\bf\zihao{5} 表}

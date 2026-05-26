@@ -5,6 +5,8 @@ LATEXMK := $(if $(TEXBIN),$(TEXBIN)/latexmk,latexmk)
 PATH_PREFIX := $(if $(TEXBIN),PATH="$(abspath $(TEXBIN)):$$PATH",)
 FONT_ENV := FONTCONFIG_FILE="$(CURDIR)/fonts.conf" XDG_CACHE_HOME=/tmp/fontcache
 
+.DEFAULT_GOAL := pdf
+
 .PHONY: bootstrap pdf clean distclean docker-build docker-pdf docker-shell
 
 bootstrap:

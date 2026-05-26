@@ -1,177 +1,111 @@
 # Experiment
 
-`Experiment` 是一个面向大语言模型安全评测的实验仓库，围绕四个主功能组织：
+`Experiment` 是一个面向大语言模型安全评测的实验仓库，覆盖红队提示生成、越狱测试、防御插入和结果分析四个环节。
 
-- `Redteam`：生成或改写越狱提示
-- `Jailbreak`：执行越狱攻击测试
-- `Defense`：在攻击流程中插入输入/交互/输出三层防御
-- `Analyze`：对结果进行判定、汇总和出图
-
-项目当前已经形成一条完整实验链路：
-
-`Attack_Dataset -> Redteam -> Jailbreak -> Defense(可选) -> Analyze`
-
-这份 `README.md` 作为仓库根目录总说明，重点回答三件事：
-
-1. 这个项目包含什么
-2. 怎么从零开始跑通
-3. 结果会输出到哪里、出现问题时如何排查
-
-## 1. 项目概览
-
-### 1.1 适用场景
-
-这个仓库适合以下工作：
-
-- 评估模型对中文越狱提示的抵抗能力
-- 使用 surrogate/redteam 方法批量生成更强的攻击变体
-- 在攻击链路中插入防御层，观察防御前后效果变化
-- 对模型输出做规则判定、LLM 判定或融合判定
-- 输出 `CSV`、聚合统计和图表，用于实验分析
-
-### 1.2 四大模块
-
-#### `Redteam/`
-
-用于生成越狱提示变体。
-
-核心能力：
-
-- 从参考攻击样本中检索相似提示
-- 调用本地或商用模型生成新变体
-- 对生成结果做质量门过滤
-- 支持单条生成和批量生成
-- 结果输出到 `Redteam/redteam_results/`
-
-主要入口：
-
-- 交互式入口：`Jelly_Z/bin/redteam`
-- Python 脚本：`Redteam/redteam_llm/surrogate_model.py`
-
-#### `Jailbreak/`
-
-用于把攻击数据集发送给目标模型，执行越狱测试。
-
-核心能力：
-
-- 支持单步和多步攻击模式
-- 并发请求模型
-- 失败自动重试
-- 实时写入 JSONL
-- 支持断点续跑
-- 可选启用 `Defense` 模块
-
-主要入口：
-
-- 交互式入口：`Jelly_Z/bin/jailbreak`
-- 单数据集多轮脚本：`Jailbreak/jailbreak_tools/single_jail/single_jail.py`
-- 多数据集多轮脚本：`Jailbreak/jailbreak_tools/multi_jail/multi_jail.py`
-
-#### `Defense/`
-
-作为 `Jailbreak` 的可插拔防御层，不是独立运行主流程。
-
-核心能力：
-
-- 输入层：检测 prompt injection、越狱意图、角色诱导等
-- 交互层：根据轮次和风险状态截断或阻断
-- 输出层：检测有害输出、替换或脱敏、可归档审计
-
-主要代码：
-
-- `Defense/defense_mode/engine.py`
-- `Defense/defense_mode/input/`
-- `Defense/defense_mode/interaction/`
-- `Defense/defense_mode/output/`
-
-#### `Analyze/`
-
-用于读取攻击结果，判定是否越狱成功，并输出统计结果和图表。
-
-核心能力：
-
-- 支持关键词判定
-- 支持 LLM 判定
-- 支持关键词 + LLM 融合判定
-- 支持断点续跑
-- 自动生成 `records.csv`、`group_metrics.csv` 和图表
-
-主要入口：
-
-- 交互式入口：`Jelly_Z/bin/analyze`
-- Python CLI：`python -m Analyze.cli`
-
-## 2. 项目结构
+仓库主链路如下：
 
 ```text
-Experiment/
-├── Analyze/                     # 判定、统计、出图
-├── Attack_Dataset/              # 攻击数据集与转换结果
-├── Defense/                     # 三层防御模块与防御结果
-├── Jailbreak/                   # 越狱测试执行器与测试结果
-├── Redteam/                     # surrogate 变体生成与结果
-├── Results/                     # Analyze 输出结果
-├── Jelly_Z/                     # 项目虚拟环境
-├── common/                      # 共享运行时与共享 LLM 配置层
-├── docs/plans/                  # 设计与实施计划
-├── model_registry.py            # 模型解析入口
-└── models.yaml                  # 模型配置
+Attack_Dataset -> Redteam -> Jailbreak -> Defense(可选) -> Analyze
 ```
 
-常见输出目录：
+这份文档按“查用法优先”的思路组织，重点回答下面几件事：
 
-- `Redteam/redteam_results/`
-- `Jailbreak/jailbreak_results/`
-- `Defense/defense_results/`
-- `Results/final/`
+- 从哪里启动
+- 每一步输入什么、输出到哪里
+- 常用命令怎么写
+- 出错时先查什么
 
-## 3. 环境准备
+## 1. 仓库定位
 
-### 3.1 Python 环境
+本仓库主要用于以下工作：
 
-仓库内已经包含虚拟环境目录 `Jelly_Z/`。推荐先激活：
+- 批量生成或改写越狱攻击提示
+- 将攻击数据发送给目标模型执行越狱测试
+- 在测试流程中插入输入层、交互层、输出层防御
+- 对结果做越狱判定、统计汇总和图表分析
+
+四个核心模块如下：
+
+- `Redteam/`：生成或改写攻击提示
+- `Jailbreak/`：执行单轮或多轮越狱测试
+- `Defense/`：作为 `Jailbreak` 的可插拔防御层
+- `Analyze/`：读取结果并输出统计表与图表
+
+## 2. 常用入口速查
+
+推荐先激活仓库内虚拟环境：
 
 ```bash
 cd /home/jellyz/Experiment
 source Jelly_Z/bin/activate
 ```
 
-如果你不激活，部分交互脚本也会尝试回退到仓库内的 `Jelly_Z/bin/python`。
+激活后常用命令如下：
+
+| 命令 | 作用 | 典型输出 |
+| --- | --- | --- |
+| `redteam` | 交互式生成攻击提示变体 | `Redteam/redteam_results/` |
+| `convert` | 将 redteam 结果转换为可供越狱测试使用的数据集 | `Attack_Dataset/` |
+| `jailbreak` | 交互式执行越狱测试 | `Jailbreak/jailbreak_results/` |
+| `analyze` | 交互式分析结果 | `Results/` |
+| `python -m Analyze.cli ...` | 非交互式分析入口 | `Results/<mode>/...` |
+
+如果不想激活环境，也可以显式使用：
+
+```bash
+Jelly_Z/bin/redteam
+Jelly_Z/bin/convert
+Jelly_Z/bin/jailbreak
+Jelly_Z/bin/analyze
+```
+
+## 3. 环境准备
+
+### 3.1 Python 环境
+
+仓库内已经包含虚拟环境目录 `Jelly_Z/`，默认优先使用它。
+
+推荐做法：
+
+```bash
+cd /home/jellyz/Experiment
+source Jelly_Z/bin/activate
+python --version
+```
 
 ### 3.2 模型服务
 
-本项目同时支持：
+当前项目支持两类模型来源：
 
-- 本地 Ollama 模型
-- OpenAI-compatible 商用接口
+- 本地 `Ollama` 模型
+- OpenAI-compatible 商业接口
 
-本地模型常见要求：
+如果使用本地模型，通常需要先启动服务：
 
 ```bash
 ollama serve
 ```
 
-说明：
+常见要求：
 
-- 交互脚本在本地 Ollama 配置下会尝试自动健康检查和自动唤起
-- 商用模型是否在菜单中显示，取决于 `models.yaml` 中对应的环境变量是否已设置
+- 本地模型必须已拉取并能在 `ollama list` 中看到
+- 商业模型所需 API Key 必须提前写入环境变量
+- 模型是否会在菜单里显示，取决于 `models.yaml` 配置和环境变量状态
 
-### 3.3 关键配置文件
+### 3.3 模型配置文件
 
-项目主配置文件是：
+主配置文件是 [models.yaml](/home/jellyz/Experiment/models.yaml)。
 
-- [models.yaml](/home/jellyz/Experiment/models.yaml)
+它维护以下信息：
 
-`models.yaml` 中维护：
-
-- 模型名称
+- 模型显示名称
 - 模型类型
 - provider
-- base_url
-- model id
-- 商业模型所需的环境变量名
+- base URL
+- 实际模型 ID
+- 商业模型所需环境变量名
 
-例如：
+示例：
 
 ```yaml
 local:
@@ -189,400 +123,291 @@ commercial:
     api_key_env: DEEPSEEK_API_KEY
 ```
 
-如果你要使用商用模型，需要先导出对应环境变量，例如：
+如果使用商业模型，需要先导出对应变量，例如：
 
 ```bash
 export DEEPSEEK_API_KEY="your-key"
 ```
 
-## 4. 快速开始
+## 4. 标准使用流程
 
-推荐按下面顺序跑：
+推荐按下面的顺序执行：
 
-1. 准备或生成攻击提示
-2. 执行越狱测试
-3. 可选启用防御再跑一次
-4. 分析结果
+1. 准备攻击数据集，或先生成 redteam 变体
+2. 运行越狱测试
+3. 如需对比防御效果，开启防御再跑一次
+4. 对结果进行分析和出图
 
-### 4.1 方式一：直接使用交互式脚本
+### 4.1 路线 A：直接使用现成攻击数据集
 
-这是最推荐的方式。
+适合已经有数据集、只想快速测试模型的场景。
 
-#### 生成红队变体
+建议顺序：
+
+1. 在 `Attack_Dataset/` 中选择现成 CSV
+2. 运行 `jailbreak`
+3. 运行 `analyze`
+
+常见数据集位置：
+
+- `Attack_Dataset/jailbreaking_dataset_v1.csv`
+- `Attack_Dataset/JailBench.csv`
+- `Attack_Dataset/resource/`
+- `Attack_Dataset/test/`
+
+### 4.2 路线 B：先生成 redteam 变体再测试
+
+适合需要构造新攻击样本的场景。
+
+建议顺序：
+
+1. 运行 `redteam`
+2. 运行 `convert`
+3. 运行 `jailbreak`
+4. 运行 `analyze`
+
+## 5. 各步骤使用说明
+
+### 5.1 生成攻击提示变体：`redteam`
+
+启动方式：
 
 ```bash
 source Jelly_Z/bin/activate
 redteam
 ```
 
-这个脚本会交互式让你选择：
+主要作用：
 
-- 目标模型
-- 变体数量 `num_variants`
-- 参考样本数 `top_k`
+- 从参考攻击样本中检索相似提示
+- 调用模型生成新的越狱提示变体
+- 支持单条提示生成和批量生成
+- 将结果保存为 `json` 或 `jsonl`
+
+你通常会在交互流程中选择：
+
+- 目标生成模型
+- 每条原始提示生成的变体数量
+- 检索参考样本数量
 - 参考数据集
-- 单条 prompt 或批量 CSV
+- 输入来源是单条提示还是批量文件
 
-输出目录默认是：
+主要输出目录：
 
 ```text
 Redteam/redteam_results/
 ```
 
-#### 转换 redteam 结果为攻击数据集
+典型输出文件示例：
+
+- `redteam_results_231956.jsonl`
+- `redteam_jailbreaking_dataset_v1.jsonl`
+
+### 5.2 转换 redteam 结果为攻击数据集：`convert`
+
+启动方式：
 
 ```bash
+source Jelly_Z/bin/activate
 convert
 ```
 
-该脚本会从 `Redteam/redteam_results/` 中选择一个 `json/jsonl` 文件，并转换到：
+作用：
+
+- 从 `Redteam/redteam_results/` 中选择一个 `json` 或 `jsonl`
+- 提取生成后的提示
+- 转换为 `Jailbreak` 可直接读取的 CSV
+
+默认输出目录：
 
 ```text
 Attack_Dataset/
 ```
 
-#### 执行越狱测试
+如果你想直接走脚本，也可以使用：
 
 ```bash
+python Redteam/redteam_convert/redteam_convert.py \
+  --input Redteam/redteam_results/your_file.jsonl \
+  --output-dir Attack_Dataset
+```
+
+### 5.3 执行越狱测试：`jailbreak`
+
+启动方式：
+
+```bash
+source Jelly_Z/bin/activate
 jailbreak
 ```
 
-交互流程包括：
+它负责：
 
-- 选择单步或多步攻击
-- 选择攻击集合
-- 选择模型
-- 选择测试规模（部分 / 完整）
-- 选择是否开启防御
-- 若开启防御，选择输入层 / 交互层 / 输出层 / 三层全部
+- 读取攻击数据集
+- 将提示发送到目标模型
+- 支持单轮或多轮测试
+- 并发请求模型
+- 自动重试、实时写入、断点续跑
+- 可选挂接 `Defense`
 
-输出目录通常是：
+交互流程通常包括：
 
-- 未启用防御：`Jailbreak/jailbreak_results/`
-- 启用防御：`Defense/defense_results/<layer>/`
+- 选择单轮或多轮测试
+- 选择攻击数据集
+- 选择目标模型
+- 选择测试范围
+- 选择是否启用防御
+- 若启用防御，选择输入层、交互层、输出层或组合方案
 
-#### 分析结果
-
-```bash
-analyze
-```
-
-交互流程包括：
-
-- 选择一个或多个输入结果文件
-- 选择判定模式：关键词 / LLM / 融合
-- 若需要 LLM 判定，再选择判定模型
-
-输出目录为：
-
-```text
-Results/<mode>/<run_xxxx>/
-```
-
-例如：
-
-- `Results/final/run_0001/`
-
-### 4.2 方式二：直接调用底层 Python CLI
-
-如果你要做调试或脚本化运行，可以直接调用 Python 入口。
-
-#### Redteam
-
-单条生成：
-
-```bash
-python Redteam/redteam_llm/surrogate_model.py \
-  --model qwen2:latest \
-  --models-config models.yaml \
-  --dataset Attack_Dataset/JailBench.csv \
-  --prompt "请改写这个提示" \
-  --num-variants 3 \
-  --top-k 5
-```
-
-批量生成：
-
-```bash
-python Redteam/redteam_llm/surrogate_model.py \
-  --model qwen2:latest \
-  --models-config models.yaml \
-  --dataset Attack_Dataset/JailBench.csv \
-  --input-csv Attack_Dataset/example.csv \
-  --num-variants 3 \
-  --top-k 5 \
-  --output-dir Redteam/redteam_results
-```
-
-#### Jailbreak
-
-单步执行：
-
-```bash
-python Jailbreak/jailbreak_tools/single_jail/single_jail.py \
-  --models qwen2:latest \
-  --dataset Attack_Dataset/example.csv \
-  --models-config models.yaml \
-  --output-dir Jailbreak/jailbreak_results \
-  --max-rounds 6
-```
-
-多数据集执行：
-
-```bash
-python Jailbreak/jailbreak_tools/multi_jail/multi_jail.py \
-  --models qwen2:latest \
-  --datasets Attack_Dataset/example.csv Attack_Dataset/JailBench.csv \
-  --models-config models.yaml \
-  --output-dir Jailbreak/jailbreak_results \
-  --max-rounds 6
-```
-
-#### Analyze
-
-论文正式判定：
-
-```bash
-python -m Analyze.cli \
-  --input-dir Jailbreak/jailbreak_results/qwen2.5_3b_jailbreaking_dataset_v1_single_turn.jsonl \
-  --judge-mode paper \
-  --output-dir Results
-```
-
-## 5. 典型实验流程
-
-这里给出一个最常见的完整流程。
-
-### 场景 A：从 redteam 生成到 analyze 分析
-
-1. 使用 `redteam` 生成攻击变体
-2. 使用 `convert` 转为 `Attack_Dataset/*.csv`
-3. 使用 `jailbreak` 对目标模型跑攻击
-4. 使用 `analyze` 生成统计结果和图表
-
-### 场景 B：直接用已有攻击数据集跑模型
-
-1. 将攻击数据集放入 `Attack_Dataset/`
-2. 运行 `jailbreak`
-3. 运行 `analyze`
-
-### 场景 C：比较开启防御前后的差异
-
-1. 先在未启用防御时跑一次 `jailbreak`
-2. 再启用某个防御层重新运行 `jailbreak`
-3. 用 `analyze` 同时选择两组结果文件进行分析
-4. 对比 `Results/<mode>/<run_xxxx>/group_metrics.csv`
-
-## 6. 输出文件说明
-
-### 6.1 Redteam 输出
-
-目录：
-
-```text
-Redteam/redteam_results/
-```
-
-内容通常是 `jsonl`，记录：
-
-- 原始 prompt
-- 生成后的变体
-- 使用的模型
-- 时间戳
-
-### 6.2 Jailbreak 输出
-
-目录：
+主要输出目录：
 
 ```text
 Jailbreak/jailbreak_results/
 ```
 
-每条记录通常包含：
+示例结果文件：
 
-- `model_name`
-- `test_id`
-- `test_name`
-- `category`
-- `attack_type`
-- `prompt`
-- `response`
-- `http_status`
-- `elapsed_time`
+- `qwen2.5_3b_jailbreaking_dataset_v1_single_turn.jsonl`
+- `deepseek-r1_8b_jailbreaking_dataset_v1_multi_turn.jsonl`
 
-若启用防御，还会额外包含：
+### 5.4 开启防御测试：`Defense`
 
-- `defense_enabled`
-- `defense_action`
-- `defense_risk_level`
-- `defense_reasons`
-- `defense_trace`
-- `defense_prompt`
+`Defense` 不是独立主入口，而是挂在 `Jailbreak` 流程里的可选能力。
 
-### 6.3 Analyze 输出
+支持三层防御：
 
-目录：
+- 输入层：检测越狱意图、角色诱导、注入模式
+- 交互层：在多轮过程中按风险动态拦截、截断或限制
+- 输出层：对模型输出进行风险过滤、改写或审计归档
 
-```text
-Results/<mode>/<run_xxxx>/
-```
+主要代码位置：
 
-主要文件：
+- [Defense/defense_mode/engine.py](/home/jellyz/Experiment/Defense/defense_mode/engine.py)
+- [Defense/defense_mode/input/module.py](/home/jellyz/Experiment/Defense/defense_mode/input/module.py)
+- [Defense/defense_mode/interaction/module.py](/home/jellyz/Experiment/Defense/defense_mode/interaction/module.py)
+- [Defense/defense_mode/output/module.py](/home/jellyz/Experiment/Defense/defense_mode/output/module.py)
 
-- `records.csv`：逐条判定结果
-- `group_metrics.csv`：聚合指标
-- `figures/success_rate.png`
-- `figures/risk_distribution.png`
-- `figures/uncertainty_overview.png`
-- `figures/risk_heatmap.png`
-
-## 7. 判定模式说明
-
-`Analyze` 当前仅保留最终判定模式：
-
-### `paper`
-
-面向固定单轮结果文件，输出论文分析图和代表性案例。
-
-优点：
-
-- 与当前论文口径一致
-- 输出稳定
-- 直接产出最终统计图
-
-## 8. 当前实现特点
-
-这个仓库目前有几个比较重要的工程特性：
-
-- `Jailbreak` 支持断点续跑
-- `Jailbreak` 请求失败会异步退避重试
-- `Analyze` 支持 checkpoint 与 partial row 恢复
-- `Analyze` 的交互式 runner 会在异常时隐藏完整 traceback，并尝试自动续跑
-- `Defense` 通过 hook 方式插入 `Jailbreak` 链路
-- `common/` 中已经开始抽共享运行时策略和共享 LLM 配置归一化层
-
-## 9. 常见问题
-
-### 9.1 商用模型不出现在交互菜单里
-
-通常原因：
-
-- 没有设置 `models.yaml` 中要求的环境变量
-- `models.yaml` 中该模型配置不完整
-
-先检查：
-
-```bash
-echo "$DEEPSEEK_API_KEY"
-```
-
-### 9.2 本地 Ollama 模型无法调用
-
-先检查服务：
-
-```bash
-ollama list
-curl http://127.0.0.1:11434/api/tags
-```
-
-如果没启动：
-
-```bash
-ollama serve
-```
-
-### 9.3 `analyze` 过程中出现“异常退出后自动续跑”
-
-当前交互式 `analyze` runner 会：
-
-- 隐藏终端里的完整 Python traceback
-- 保留统一告警
-- 自动重新拉起服务并断点续跑
-
-这通常意味着：
-
-- 本地 Ollama 暂时超时
-- 商用接口暂时超时
-- 判定过程中模型服务不稳定
-
-### 9.4 输出文件太多，不知道先看哪个
-
-建议优先看：
-
-1. `records.csv`
-2. `group_metrics.csv`
-3. `figures/success_rate.png`
-
-### 9.5 `Jailbreak` 中途停止后如何继续
-
-确保输出文件还在，然后重新使用相同配置运行，并带上：
-
-```bash
---resume
-```
-
-交互式 `jailbreak` 已默认启用 resume。
-
-## 10. 开发与测试
-
-当前仓库已经补上了一批基础回归测试，位于：
+主要输出目录：
 
 ```text
-tests/
+Defense/defense_results/
 ```
 
-可以运行：
+常见子目录：
+
+- `Defense/defense_results/input_layer/`
+- `Defense/defense_results/interaction_layer/`
+- `Defense/defense_results/output_layer/`
+- `Defense/defense_results/all_layers/`
+
+### 5.5 分析结果：`analyze`
+
+推荐先使用交互式入口：
 
 ```bash
-python -m unittest discover tests
+source Jelly_Z/bin/activate
+analyze
 ```
 
-如果只跑当前已补的核心回归：
+如果你需要稳定复现、批处理或写脚本，建议直接使用 CLI：
 
 ```bash
-python -m unittest \
-  tests.test_loader \
-  tests.test_analyze_pipeline \
-  tests.test_defense_engine \
-  tests.test_analyze_runner \
-  tests.test_common \
-  tests.test_runtime_config \
-  tests.test_shared_llm_config \
-  tests.test_redteam_clients \
-  tests.test_single_jail_runtime
+python -m Analyze.cli \
+  --input-dir Jailbreak/jailbreak_results/your_result.jsonl \
+  --output-dir Results \
+  --judge-mode paper
 ```
 
-## 11. 最近优化状态
+`Analyze` 负责：
 
-当前仓库已经完成一轮边界 2 优化，主要包括：
+- 读取 `jsonl` 结果
+- 对每条结果执行越狱判定
+- 输出记录表、聚合统计和图表
+- 支持断点续跑
 
-- 建立 `tests/` 基础回归测试包
-- 增加共享运行时策略 `common/runtime.py`
-- 增加共享 LLM 配置归一化层 `common/llm/config.py`
-- 为 `Analyze` 的 external provider 增加重试与退避
-- 让 `Analyze` 接入共享配置归一化
-- 对齐 `Redteam` 的 client 配置保护
-- 为 `Jailbreak` 增加运行时 guardrails
+主要输出内容：
 
-这意味着当前代码相比之前更适合继续做下面两类工作：
+- `records.csv`
+- `group_metrics.csv`
+- `representative_cases.csv`
+- `figures/`
 
-- 继续统一 schema
-- 继续扩展 `single_jail/` 与 `multi_jail/` 的策略模块
+默认结果根目录：
 
-## 12. 后续建议
+```text
+Results/
+```
 
-如果你准备继续演进这个仓库，推荐优先顺序是：
+如果使用当前 CLI，分析结果会按模式写入类似目录：
 
-1. 统一跨模块结果 schema
-2. 扩展 `Jailbreak/jailbreak_tools/single_jail/` 与 `multi_jail/`
-3. 继续配置化 `Defense`
-4. 提升 `Analyze` 的大规模吞吐
+```text
+Results/final/<run_id>/
+Results/multi_turn/<judge_mode>/<run_id>/
+```
 
----
+仓库中已经存在一个结果说明文档，可配合查看：
 
-如果你是第一次接手这个仓库，推荐最短路径是：
+- [Results/ANALYZE_RESULTS_GUIDE_ZH.md](/home/jellyz/Experiment/Results/ANALYZE_RESULTS_GUIDE_ZH.md)
+
+## 6. 输入与输出对照
+
+### 6.1 Redteam
+
+- 输入：单条提示、参考数据集、批量 CSV
+- 输出：`Redteam/redteam_results/*.json` 或 `*.jsonl`
+
+### 6.2 Convert
+
+- 输入：`Redteam/redteam_results/` 下的 redteam 结果文件
+- 输出：`Attack_Dataset/*.csv`
+
+### 6.3 Jailbreak
+
+- 输入：`Attack_Dataset/*.csv`
+- 输出：`Jailbreak/jailbreak_results/*.jsonl`
+
+### 6.4 Defense
+
+- 输入：`Jailbreak` 运行过程中的请求和响应
+- 输出：`Defense/defense_results/` 下的审计记录和防御后结果
+
+### 6.5 Analyze
+
+- 输入：`Jailbreak/jailbreak_results/*.jsonl` 或防御后的结果文件
+- 输出：`Results/` 下的 `csv` 与图表
+
+## 7. 常见目录说明
+
+```text
+Experiment/
+├── Analyze/               # 判定、统计、绘图
+├── Attack_Dataset/        # 攻击数据集与转换结果
+├── Defense/               # 三层防御模块与防御结果
+├── Jailbreak/             # 越狱测试执行器与测试结果
+├── Redteam/               # 攻击提示生成与转换
+├── Results/               # 最终分析结果
+├── Jelly_Z/               # 仓库内虚拟环境
+├── common/                # 共享运行时与 LLM 配置逻辑
+├── docs/plans/            # 设计和实施记录
+├── model_registry.py      # 模型解析入口
+└── models.yaml            # 模型配置文件
+```
+
+## 8. 常用操作示例
+
+### 8.1 从现成数据集直接跑一轮
 
 ```bash
+cd /home/jellyz/Experiment
+source Jelly_Z/bin/activate
+jailbreak
+analyze
+```
+
+### 8.2 先生成变体再测试
+
+```bash
+cd /home/jellyz/Experiment
 source Jelly_Z/bin/activate
 redteam
 convert
@@ -590,4 +415,104 @@ jailbreak
 analyze
 ```
 
-先跑通，再开始改。  
+### 8.3 命令行方式分析某个结果文件
+
+```bash
+cd /home/jellyz/Experiment
+source Jelly_Z/bin/activate
+python -m Analyze.cli \
+  --input-dir Jailbreak/jailbreak_results/deepseek-chat_jailbreaking_dataset_v1_single_turn.jsonl \
+  --output-dir Results \
+  --judge-mode paper
+```
+
+## 9. 常见问题与排障
+
+### 9.1 命令找不到
+
+现象：
+
+- `redteam: command not found`
+- `jailbreak: command not found`
+
+优先检查：
+
+```bash
+source Jelly_Z/bin/activate
+which redteam
+which jailbreak
+```
+
+如果仍然不方便使用 shell 命令名，可直接执行：
+
+```bash
+Jelly_Z/bin/redteam
+Jelly_Z/bin/jailbreak
+Jelly_Z/bin/analyze
+Jelly_Z/bin/convert
+```
+
+### 9.2 模型在菜单里不显示
+
+优先检查：
+
+- `models.yaml` 中是否已配置该模型
+- 商业模型依赖的环境变量是否已经导出
+- 本地 `Ollama` 服务是否已经启动
+
+建议排查顺序：
+
+1. 打开 [models.yaml](/home/jellyz/Experiment/models.yaml)
+2. 检查 `api_key_env` 对应变量是否存在
+3. 若为本地模型，执行 `ollama serve`
+
+### 9.3 本地模型请求失败
+
+优先检查：
+
+- `ollama serve` 是否运行
+- 模型是否已经拉取
+- `base_url` 是否与本地服务一致
+
+### 9.4 分析阶段没有输出图表
+
+优先检查：
+
+- 输入文件是否为有效 `jsonl`
+- `Analyze` 是否成功写出 `records.csv`
+- 输出目录下是否已生成 `figures/`
+
+建议先确认：
+
+```text
+Results/.../records.csv
+Results/.../group_metrics.csv
+Results/.../figures/
+```
+
+### 9.5 中断后如何续跑
+
+当前仓库多处流程支持断点续跑或增量写入，尤其是：
+
+- `Jailbreak`
+- `Analyze`
+
+如果要续跑，通常不要删除已有输出文件，优先复用原结果目录重新执行。
+
+## 10. 推荐阅读顺序
+
+如果你只是想快速上手，建议按下面顺序看：
+
+1. 本文第 2 节“常用入口速查”
+2. 本文第 4 节“标准使用流程”
+3. 本文第 5 节“各步骤使用说明”
+4. 本文第 9 节“常见问题与排障”
+
+如果你已经知道要做什么，只需要记住下面四个命令：
+
+```bash
+redteam
+convert
+jailbreak
+analyze
+```

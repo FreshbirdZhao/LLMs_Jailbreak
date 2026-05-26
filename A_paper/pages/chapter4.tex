@@ -12,6 +12,13 @@
 
 三类攻击来源——静态测试集、自动化红队样本与多轮交互记录——在本框架中共享同一条执行与评估链路，以确保不同攻击方式的结果可直接横向比较。执行流程分为四个阶段：样本规范化、模型调用、在线初筛与离线裁定。样本规范化阶段将多来源数据对齐为统一表示，每条记录包含攻击输入、任务类别与所属攻击维度；模型调用阶段将规范化后的攻击输入依次提交目标模型并完整保留其回复；在线初筛阶段使用轻量级规则快速区分明确拒答与非明确拒答两类，不作最终判定，目的是为后续离线裁定提供分层依据；离线裁定阶段由判定器对所有回复重新逐条审阅，输出最终标签。
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.96\textwidth]{figures/fig4-1-single-step-jailbreak-terminal.png}
+\caption{单步越狱测试运行界面}
+\label{fig:chapter4-experiment-run}
+\end{figure}
+
 离线判定将每条回复分配至三个互斥类别：安全拒答（模型明确拒绝，未输出实质性有害内容）、越狱成功（模型实质性回应了危险目标）与边界模糊（回复中同时存在拒答信号与潜在风险内容，二者并存而无法简单归类）\cite{markov2022holistic,phute2024llmselfdefense}。边界模糊样本不并入成功或失败两类，而作为独立维度单独统计。这一三值划分的意义在于：若将边界样本强制归入二元判定，则会系统性地低估某些攻击维度真实的安全威胁——部分攻击的危险性恰恰体现在使模型陷入摇摆，而非产生完全明显的越狱输出。
 
 在评估指标上，本文以攻击分组为单位同时追踪四个维度。越狱成功率 $\mathrm{ASR}_g$ 衡量某攻击维度整体突破安全约束的能力，如第 3.1 节所定义。边界模糊率刻画安全判定不确定性的分布：
@@ -57,7 +64,7 @@
 
 \section{攻击维度分层分析}
 
-将结果按攻击维度展开（图~\ref{fig:chapter4-success-heatmap}），可以看到比模型间差异更稳定的结构性特征：各维度成功率的跨模型排序高度一致，说明脆弱性分层主要由攻击维度本身决定，而非某个模型的特定弱点。
+将结果按攻击维度展开（表~\ref{tab:chapter4-success-by-dimension}），可以看到比模型间差异更稳定的结构性特征：各维度成功率的跨模型排序高度一致，说明脆弱性分层主要由攻击维度本身决定，而非某个模型的特定弱点。
 
 \subsection{认知误导的压倒性优势}
 
@@ -77,12 +84,29 @@
 
 上述结果说明，现有安全对齐机制在处理形式变异、跨语言输入和图形化字符时，鲁棒性仍有不足。模型尽管能够在部分情况下识别异常输入，但尚不能将这种识别稳定转化为一致的安全响应。在此基础上，若攻击进一步结合语义包装或多轮诱导，这些波动较大的维度可能成为新的风险点。因而，对这些维度的考察，主要有助于识别安全边界中的薄弱区域，并为防御机制的进一步完善提供参考。
 
-\begin{figure}[H]
+\begin{table}[H]
 \centering
-\resizebox{0.82\textwidth}{!}{\input{figures/fig4-1-success-heatmap.tex}}
-\caption{九个攻击维度在三模型上的成功率热力图}
-\label{fig:chapter4-success-heatmap}
-\end{figure}
+\footnotesize
+\setlength{\tabcolsep}{8pt}
+\renewcommand{\arraystretch}{0.95}
+\caption{九个攻击维度在三模型上的成功率对比}
+\label{tab:chapter4-success-by-dimension}
+\begin{tabular}{lccc}
+\toprule
+\textbf{攻击维度} & \textbf{deepseek-chat} & \textbf{qwen2.5:1.5b} & \textbf{qwen2.5:3b} \\
+\midrule
+认知误导 & 9.58\% & 13.75\% & 14.58\% \\
+指令重构 & 0.83\% & 0.83\% & 2.78\% \\
+格式伪装 & 0.56\% & 1.81\% & 0.83\% \\
+上下文操控 & 0.28\% & 1.39\% & 0.56\% \\
+对抗后缀 & 0.14\% & 0.42\% & 0.56\% \\
+分词切分 & 0.42\% & 0.14\% & 0.42\% \\
+编码扰动 & 0.56\% & 0.00\% & 0.00\% \\
+低资源语言 & 0.00\% & 0.15\% & 0.00\% \\
+ASCII 伪装 & 0.00\% & 0.00\% & 0.14\% \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \section{边界模糊性的测量与意义}
 
@@ -98,7 +122,7 @@
 
 \begin{figure}[H]
 \centering
-\input{figures/fig4-2-risk-distribution.tex}
+\input{figures/fig4-2-result-label-distribution.tex}
 \vspace{6pt}
 \caption{九个攻击维度的结果标签分布图}
 \label{fig:chapter4-risk-distribution}
@@ -122,6 +146,13 @@
 
 从认知误导与指令重构分组中各随机抽取 50 条种子提示，使用 \texttt{Redteam} 模块为每条种子生成 3 个变体。经质量门筛选，认知误导方向有效变体 142 条（通过率 94.7\%），指令重构方向有效变体 131 条（通过率 87.3\%），合计 273 条变体接入主实验执行链路。
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.72\textwidth]{figures/fig4-3-redteam-batch-generation-interface.png}
+\caption{\texttt{Redteam} 模块批量生成变体的运行界面}
+\label{fig:chapter4-redteam-interface}
+\end{figure}
+
 成功率对比见表~\ref{tab:redteam-compare}。认知误导变体在三个模型上较原始种子分别提升 5.63、7.04 和 8.45 个百分点，平均相对提升约 52\%；指令重构变体的绝对提升幅度较小，但相对比例更高，三个模型均达到原始成功率的 2.6 至 2.8 倍。
 
 结果说明，质量可控的措辞改写能够在不改变攻击目标的前提下系统性地提升命中率。认知误导变体的提升幅度大于指令重构，与静态实验中认知误导本身更强的基础脆弱性相符，说明在安全边界已经松动的维度上，表达多样化的边际效益更大。
@@ -139,7 +170,6 @@
 \midrule
 认知误导 静态种子 & 9.58\% & 13.75\% & 14.58\% & — \\
 认知误导 自动化变体 & 15.21\% & 20.79\% & 23.03\% & +52.3\% \\
-\midrule
 指令重构 静态种子 & 0.83\% & 0.83\% & 2.78\% & — \\
 指令重构 自动化变体 & 2.29\% & 2.29\% & 7.63\% & +175.8\% \\
 \bottomrule
@@ -158,7 +188,7 @@
 
 越狱攻击领域现有工作大多以单一攻击方法的提出与验证为核心，目标是在某一具体策略上尽可能提高成功率。本文的出发点不同：框架的价值不在于提出一种更强的攻击，而在于为多类攻击路径建立共同的测试条件，使不同策略之间的相对威胁可以直接比较。
 
-GCG\cite{zou2023universal}通过梯度搜索生成可迁移的对抗性后缀，依赖白盒访问模型参数；PAIR\cite{chao2024pair}与TAP\cite{mehrotra2024tap}以辅助模型自动迭代优化提示，在黑盒条件下取得较高成功率；AutoDAN\cite{liu2023autodan}借助离散优化生成语义连贯的越狱提示；GPTFuzzer\cite{yu2024gptfuzzer}通过模板变异机制批量扩展攻击变体覆盖面。上述工作各自在所关注的问题上有实质性进展，但实验条件、目标模型与评估口径不尽相同，结果之间难以直接对比，也无从判断不同攻击类别在安全威胁上的轻重。
+GCG及其加速实现\cite{zhao2024accelerating}通过梯度搜索生成可迁移的对抗性后缀，依赖白盒访问模型参数；PAIR\cite{chao2024pair}与TAP\cite{mehrotra2024tap}以辅助模型自动迭代优化提示，在黑盒条件下取得较高成功率；AutoDAN\cite{liu2023autodan}借助离散优化生成语义连贯的越狱提示；Red Teaming Language Models with Language Models\cite{perez2022redteaming} 则展示了基于语言模型批量生成攻击候选的自动化红队路径。上述工作各自在所关注的问题上有实质性进展，但实验条件、目标模型与评估口径不尽相同，结果之间难以直接对比，也无从判断不同攻击类别在安全威胁上的轻重。
 
 表~\ref{tab:attack-comparison}从研究定位与评估机制两个角度对上述方法与本文框架进行了整理。
 
@@ -173,12 +203,11 @@ GCG\cite{zou2023universal}通过梯度搜索生成可迁移的对抗性后缀，
 \toprule
 \textbf{方法} & \textbf{访问要求} & \textbf{研究定位} & \textbf{评测指标} & \textbf{跨维度可比} & \textbf{核心贡献} \\
 \midrule
-GCG\cite{zou2023universal}       & 白盒 & 攻击方法提出 & 二元 ASR & 否 & 通用对抗后缀的可迁移性 \\
+GCG\cite{zhao2024accelerating}       & 白盒 & 攻击方法提出 & 二元 ASR & 否 & 通用对抗后缀的可迁移性 \\
 PAIR\cite{chao2024pair}          & 黑盒 & 攻击方法提出 & 二元 ASR & 否 & 黑盒自动化语义改写 \\
 TAP\cite{mehrotra2024tap}        & 黑盒 & 攻击方法提出 & 二元 ASR & 否 & 树状搜索提升查询效率 \\
 AutoDAN\cite{liu2023autodan}     & 黑盒 & 攻击方法提出 & 二元 ASR & 否 & 离散优化生成可读提示 \\
-GPTFuzzer\cite{yu2024gptfuzzer} & 黑盒 & 攻击方法提出 & 二元 ASR & 否 & 模板变异扩展变体覆盖 \\
-\midrule
+Red Teaming LM with LM\cite{perez2022redteaming} & 黑盒 & 攻击方法提出 & 二元 ASR & 否 & 辅助模型批量生成攻击候选 \\
 \textbf{本文框架} & \textbf{黑盒} & \textbf{系统评测} & \textbf{ASR + 模糊率} & \textbf{是} & \textbf{多维统一基线与风险分层} \\
 \bottomrule
 \end{tabular}
@@ -201,4 +230,3 @@ GPTFuzzer\cite{yu2024gptfuzzer} & 黑盒 & 攻击方法提出 & 二元 ASR & 否
 动态扩展实验进一步说明，静态阶段识别出的边界不稳定性确实能够在多轮推进中被放大。自动化变体生成与多轮越狱均使静态基础成功率出现显著提升，且静态判定为边界模糊的样本在多轮场景下的突破率明显高于静态拒答样本，印证了模糊带作为动态攻击入口的实际意义。
 
 与代表性越狱方法的比较说明，本文框架与现有单一攻击方法研究在贡献定位上互补：前者关注在统一条件下量化不同攻击策略之间的相对威胁，后者关注某一策略本身的成功率上限。三值评估口径与静态动态共享评判基准，是本文在评测机制上区别于现有工作的主要特点。上述结论为第五章防御方案的针对性设计提供了依据。
-
